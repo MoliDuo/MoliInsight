@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { SCHEMA_VERSION } from "@moli-insight/protocol";
 import { admin } from "./admin.ts";
+import { catalogRoutes } from "./catalog.ts";
 import type { AppEnv, Deps, Env } from "./env.ts";
 import { exportRoutes } from "./export.ts";
 import { ingest } from "./ingest.ts";
@@ -8,6 +9,7 @@ import { dayOffset } from "./days.ts";
 import { runRetention } from "./retention.ts";
 import { runRollup } from "./rollup.ts";
 import { stats } from "./dashboard-api.ts";
+import { mcp } from "./mcp.ts";
 
 export type { Env } from "./env.ts";
 
@@ -21,9 +23,11 @@ export function createApp(deps: Deps = { now: () => Date.now() }) {
 
   app.get("/healthz", (c) => c.json({ ok: true, schemaVersion: SCHEMA_VERSION }));
   app.route("/", ingest);
+  app.route("/", catalogRoutes);
   app.route("/", exportRoutes);
   app.route("/", admin);
   app.route("/", stats);
+  app.route("/", mcp);
 
   return app;
 }

@@ -3,6 +3,7 @@
 // through textContent, never as HTML.
 import { act, api, errorBox, fmt, h, hooks, secretBox } from "./lib.js";
 import { eventsPage, overviewPage } from "./data.js";
+import { comparePage, frictionPage, funnelsPage, navigationPage, performancePage, sessionsPage, usagePage } from "./analysis.js";
 
 const main = document.getElementById("main");
 const nav = document.getElementById("nav");
@@ -184,9 +185,11 @@ async function peoplePage() {
 
 // ---------------------------------------------------------------------------
 
+const DATA_PAGES = ["overview", "events", "funnels", "compare", "sessions", "friction", "performance", "navigation", "usage"];
+
 /** Pages that are about data are wider, and the current menu entry is marked. */
 function mark(page) {
-  main.classList.toggle("wide", page === "overview" || page === "events");
+  main.classList.toggle("wide", DATA_PAGES.includes(page));
   for (const a of nav.querySelectorAll("a")) a.classList.toggle("current", a.getAttribute("href") === `#/${page}`);
 }
 
@@ -201,6 +204,13 @@ async function route() {
     const view = page === "tokens" ? await tokensPage()
       : page === "people" ? await peoplePage()
       : page === "apps" ? (arg ? await appPage(decodeURIComponent(arg)) : await appsPage())
+      : page === "funnels" ? await funnelsPage(again)
+      : page === "compare" ? await comparePage(again)
+      : page === "sessions" ? await sessionsPage(again, arg ? decodeURIComponent(arg) : "")
+      : page === "friction" ? await frictionPage(again)
+      : page === "performance" ? await performancePage(again)
+      : page === "navigation" ? await navigationPage(again)
+      : page === "usage" ? await usagePage(again)
       : page === "events" ? await eventsPage(again, arg ? decodeURIComponent(arg) : "")
       : await overviewPage(again);
     if (mine !== token) return; // a newer navigation has taken over

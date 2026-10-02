@@ -53,3 +53,5 @@ main.wide { max-width: 1040px; }
 .names a span { color: var(--muted); font-variant-numeric: tabular-nums; }
 pre.props { margin: 0; font: 12px ui-monospace, monospace; white-space: pre-wrap; word-break: break-all; }
 .note { background: var(--warn-bg); padding: 6px 10px; border-radius: 6px; font-size: 13px; margin: 6px 0; }
+.stat-inline { font-size: 22px; font-weight: 600; }
+h3 { margin: 18px 0 6px; font-size: 16px; }

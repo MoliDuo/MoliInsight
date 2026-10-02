@@ -255,6 +255,17 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 6. 如果做好了 MCP：它的地址，以及 token 的配置方式。
 7. 直连的接入说明：ingest key 怎么注入 MoliSwitch 的构建，以及按设备限流的数值。
 
+## M4 完成情况
+
+已完成：
+- 事件目录上传 `PUT /v1/catalog`（ingest key，整体替换；`metrics`、`funnels`、`tier`），命令行 `moli-insight catalog`。
+- 分析查询：比率指标（可按 prop 分组、带条件；无条件时走日汇总表）、漏斗（按会话或设备，带窗口和步骤间中位耗时）、版本对比、摩擦点（连点、无响应点击、错误、toast、对话框）、性能（Web Vitals 分位数、操作耗时与失败率）、导航、功能使用（目录里有而没出现的事件，出现了而目录没登记的事件）、会话列表与时间线。原始事件的扫描最多取 50000 条，超出时结果里 `truncated: true`。
+- 看板新增页面：**漏斗与指标**（目录指标、目录和已保存的漏斗、自己搭漏斗并可保存）、**会话**（列表和时间线；事件浏览器的记录可以跳到所属会话）、**版本对比**、**摩擦点**、**性能**、**导航**、**功能使用**。事件页显示目录里的说明，并标出未登记的事件。
+- MCP `/mcp`（无状态 Streamable HTTP，admin token）：`list_apps`、`get_catalog`、`summary`、`trend`、`query_events`、`metric`、`funnel`、`compare_releases`、`sessions`、`session_timeline`、`friction`、`performance`；出错以 `isError` 工具结果返回，输出上限 12 万字符。
+- 验收：在真实 `wrangler dev` 上上传 MoliSwitch 的目录、导入样本日志，通过 `/mcp` 取得手动纠正率和漏斗；Cashier 的漏斗由同一条 `funnel` 工具提供，已在测试里用 Cashier 形状的数据验证。
+
+没有做：Cashier 的实际接入数据（见下）；用真实 MCP 客户端（Claude Code）连接 `/mcp` 没有在这台机器上试过，只用 JSON-RPC 请求验证；看板仍没有在真实浏览器里点过。
+
 ## M3 完成情况
 
 已完成：
@@ -262,7 +273,7 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 - 看板 P0 页面：**概览**（会话、活跃设备、有使用的天数、事件、平均时长；每天的会话；时长分布；平台；按人；版本；可按应用、时间范围、平台、版本、人筛选）、**事件浏览器**（事件名列表和计数；趋势图，可按某个属性分组或筛选；原始记录翻页）、**管理**（M1 已做）。读取走日汇总表；按属性分组、按人或设备筛选必须扫原始事件，最多取最新 20000 条并提示。
 - 导出格式定稿：[export-v1.md](export-v1.md)，头部带目录、人、设备、版本、汇总和事件计数；`format=json` 限一周以内。
 
-没有做：Session 时间线、漏斗与比率、版本对比、摩擦点、性能、导航（P1/P2，属于 M4）。看板还没有在真实浏览器里点过（页面逻辑在 happy-dom 里对着真实 API 跑过）。
+没有做：Session 时间线、漏斗与比率、版本对比、摩擦点、性能、导航（已在 M4 做）。看板还没有在真实浏览器里点过（页面逻辑在 happy-dom 里对着真实 API 跑过）。
 
 ## M2 完成情况与交回清单
 
@@ -279,8 +290,8 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 2. 包：`@moli-insight/web@0.1.0`、`@moli-insight/node@0.1.0`（暂名）；签名见 [sdk-api.md](sdk-api.md)：`init({ endpoint, release, autoCapture, enabled })`，`createInsight({ url, key, release, timeoutMs, onError }).relayHandler({ authorize, maxBodyBytes })`。
 3. 环境变量：`INSIGHT_URL`、`INSIGHT_KEY`。key 直接填进部署平台。
 4. localStorage 键前缀 `moli_insight_`（另有 sessionStorage 的 `moli_insight_tab`）。
-5. 事件目录上传：尚未实现，M3/M4 做；格式见 `packages/protocol/schema/catalog-v1.json`。
-6. MCP：尚未实现（M4）。读数据先用 `GET /v1/export?app=<slug>`（看板登录或 `mia_` admin token）。
+5. 事件目录上传（M4 已实现）：`PUT <INSIGHT_URL>/v1/catalog`，用 ingest key；命令行 `moli-insight catalog <catalog.json>`；格式见 `packages/protocol/schema/catalog-v1.json`。
+6. MCP（M4 已实现）：`<INSIGHT_URL>/mcp`，`Authorization: Bearer mia_…`。Claude Code 里：`claude mcp add --transport http moli-insight <INSIGHT_URL>/mcp --header "Authorization: Bearer mia_…"`。导出仍可用 `GET /v1/export?app=<slug>`。
 7. 直连：key 由 CI 注入或在设置里填；限流为每个 key 120 次/分钟、每台设备 30 次/分钟。
 
 ## 附：Cashier 接入预告（等你交回接口后由我来做）

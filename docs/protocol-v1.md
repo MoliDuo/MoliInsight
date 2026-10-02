@@ -215,7 +215,48 @@ props 的定义在 [`standard-events.ts`](../packages/protocol/src/standard-even
 
 这样每个应用自己的分析视角放在自己的仓库里，平台里没有任何某个应用专属的代码。
 
+### 8.1 上传与读取
+
+```bash
+curl -X PUT "$INSIGHT_URL/v1/catalog" -H "authorization: Bearer mi_..." -H "content-type: application/json" -d @telemetry-catalog.json
+# 或：INSIGHT_URL=... INSIGHT_KEY=mi_... moli-insight catalog telemetry-catalog.json
+```
+
+- 用 ingest key，和 ingest 共用限流；请求体不超过 256 KB，解压后不超过 512 KB。
+- 成功：`{"ok":true,"events":N,"metrics":N,"funnels":N}`。校验失败：400 `{"error":"invalid_catalog","issues":[{"path","message"}]}`，目录不变。
+- 整体替换：上传的文件没有的事件、指标、漏斗会被删掉。看板上保存的漏斗另存，不受影响。
+
+### 8.2 指标和漏斗的算法
+
+- **比率指标**：范围内分子事件数 ÷ 分母事件数；`where` 条件按 prop 路径（点号）比较，`eq`/`neq`/`gt`/`gte`/`lt`/`lte`/`in`/`exists`，字符串和数字按值相等。没有条件、分组和人/设备筛选时直接读日汇总表，否则扫范围内的原始事件（最多 50000 条，超出时 `truncated: true`）。
+- **漏斗**：按会话（或设备）分组，从第一步出现起，在窗口内按顺序走到哪一步就算到哪一步；报告每一步的数量、占上一步和第一步的比例，以及从上一步过来的中位耗时。
+
 相对原企划书：目录从「事件数组」改成带 `schemaVersion` 的对象，新增 `metrics`、`funnels` 和 `tier`。
+
+## 8b. MCP
+
+`POST /mcp`：无状态的 JSON-RPC 2.0（Streamable HTTP，只回 JSON，不开 SSE），`Authorization: Bearer mia_…`；请求带 `Origin` 时主机必须和服务相同。非 POST 返回 405，未认证 401。支持 `initialize`、`ping`、`tools/list`、`tools/call`、通知（202）和不超过 20 个请求的批量。
+
+| 工具 | 作用 |
+| --- | --- |
+| `list_apps` | 应用、保留期、最近一次收到事件的时间 |
+| `get_catalog` | 事件说明、指标、漏斗 |
+| `summary` | 会话、设备、事件、时长、平台、版本 |
+| `trend` | 某个事件每天的计数，可按 prop 分组 |
+| `query_events` | 原始事件，`limit` ≤ 200，游标分页 |
+| `metric` | 目录里的比率指标，含分组和每日值 |
+| `funnel` | 目录或已保存的漏斗（`name`），或临时步骤（`steps`） |
+| `compare_releases` | 两个版本的会话、错误、连点、操作失败率和指标 |
+| `sessions` / `session_timeline` | 会话列表；一个会话的事件时间线 |
+| `friction` / `performance` | 摩擦点；Web Vitals 和操作耗时 |
+
+所有工具都带 `app`，时间范围用 `days`（默认 30，≤ 400）或 `from`/`to`，可选 `platform`、`release`、`person`、`device`。参数错误、找不到应用或指标时，结果带 `isError: true`，文本里说明原因，模型可以据此重试。单次输出不超过 12 万字符。
+
+Claude Code 里添加：
+
+```bash
+claude mcp add --transport http moli-insight "$INSIGHT_URL/mcp" --header "Authorization: Bearer mia_..."
+```
 
 ## 9. 两种接入方式
 

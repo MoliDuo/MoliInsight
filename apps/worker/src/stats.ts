@@ -18,10 +18,10 @@ export interface Span {
   offsetMin: number;
 }
 
-const rangeMs = (span: Span) => [dayStart(span.from, span.offsetMin), dayStart(addDays(span.to, 1), span.offsetMin)] as const;
+export const rangeMs = (span: Span) => [dayStart(span.from, span.offsetMin), dayStart(addDays(span.to, 1), span.offsetMin)] as const;
 
 /** Builds `AND …` conditions from filters, numbering bound parameters from `first`. */
-function conditions(
+export function conditions(
   filters: Filters,
   columns: { platform: string; release: string; person: string; device: string },
   first: number,

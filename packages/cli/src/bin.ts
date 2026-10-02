@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { parseArgs } from "node:util";
 import { deterministicUuid } from "@moli-insight/protocol";
+import { uploadCatalog } from "./catalog.ts";
 import { importUsageLog } from "./import.ts";
 
 const USAGE = `usage: moli-insight import [options] <usage-log.jsonl>...
+       moli-insight catalog [options] <catalog.json>
 
 Sends a local JSONL usage log (MoliSwitch's usage-YYYY-MM-DD.jsonl) to a
 MoliInsight server. Running it again on the same file adds nothing.
@@ -18,6 +20,9 @@ MoliInsight server. Running it again on the same file adds nothing.
   --include <names>   only these events, comma separated
   --exclude <names>   leave these events out, comma separated
   --dry-run           read and count, send nothing
+
+catalog replaces the app\'s event catalog (events, metrics, funnels) with the
+file. It takes --url, --key and --dry-run.
 `;
 
 const { values, positionals } = parseArgs({
@@ -36,7 +41,7 @@ const { values, positionals } = parseArgs({
 });
 
 const [command, ...files] = positionals;
-if (values.help || command !== "import" || files.length === 0) {
+if (values.help || (command !== "import" && command !== "catalog") || files.length === 0) {
   console.error(USAGE);
   process.exit(values.help ? 0 : 2);
 }
@@ -46,6 +51,27 @@ const key = values.key ?? process.env.INSIGHT_KEY;
 if (!values["dry-run"] && (!url || !key)) {
   console.error("Both the server address (--url or INSIGHT_URL) and the ingest key (--key or INSIGHT_KEY) are needed.\n");
   process.exit(2);
+}
+
+if (command === "catalog") {
+  if (files.length !== 1) {
+    console.error("catalog takes exactly one file.\n");
+    process.exit(2);
+  }
+  try {
+    const summary = await uploadCatalog(readFileSync(files[0]!, "utf8"), {
+      url: url ?? "http://localhost",
+      key: key ?? "",
+      dryRun: values["dry-run"],
+    });
+    console.log(
+      `${summary.events} events, ${summary.metrics} metrics, ${summary.funnels} funnels ${summary.dryRun ? "checked, nothing sent" : "uploaded"}`,
+    );
+    process.exit(0);
+  } catch (error) {
+    console.error(`failed: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
 }
 
 const platforms = ["web", "ios", "android", "windows", "macos", "server"] as const;

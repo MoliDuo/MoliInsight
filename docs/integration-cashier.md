@@ -54,7 +54,7 @@ Props carry types and codes, never amounts, notes or other user text.
 
 ## 5. Catalog
 
-Keep `telemetry-catalog.json` in the Cashier repo, with `metrics` (for example abandonment = `record.abandon` ÷ `record.open`) and `funnels`, and update `docs/architecture.md`. Catalog upload to the platform arrives with M3/M4.
+Keep `telemetry-catalog.json` in the Cashier repo, with `metrics` (for example abandonment = `record.abandon` ÷ `record.open`) and `funnels`, and update `docs/architecture.md`. Upload it with `moli-insight catalog telemetry-catalog.json` (or `PUT /v1/catalog` with the ingest key) after each change; the dashboard and MCP then show its descriptions, metrics and funnels.
 
 ## 6. Done when
 

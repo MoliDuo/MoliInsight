@@ -19,7 +19,7 @@ const save = () => {
 };
 
 /** The query string for the current app-wide controls. */
-function query(extra = {}) {
+export function query(extra = {}) {
   const q = new URLSearchParams();
   if (view.days === "custom" && view.from && view.to) {
     q.set("from", view.from);
@@ -39,7 +39,7 @@ function select(value, options, onchange) {
 }
 
 /** App, range and filters. `rerender` runs after any change. */
-async function controls(slug, rerender, { filters = true } = {}) {
+export async function controls(slug, rerender, { filters = true } = {}) {
   const [{ apps }, options, { people }] = await Promise.all([
     api("/api/apps"), api(`/api/apps/${slug}/filters`), api("/api/people"),
   ]);
@@ -73,7 +73,7 @@ async function controls(slug, rerender, { filters = true } = {}) {
 }
 
 /** Picks the app to show: the remembered one if it still exists, else the first. */
-async function currentApp(requested) {
+export async function currentApp(requested) {
   const { apps } = await api("/api/apps");
   const slug = [requested, view.app].find((s) => s && apps.some((a) => a.slug === s)) ?? apps[0]?.slug;
   if (slug) {
@@ -83,13 +83,13 @@ async function currentApp(requested) {
   return slug;
 }
 
-const emptyState = () => h("p", { class: "muted" }, "还没有应用。先到「应用」页新建一个并生成密钥。");
+export const emptyState = () => h("p", { class: "muted" }, "还没有应用。先到「应用」页新建一个并生成密钥。");
 
-function stat(value, label) {
+export function stat(value, label) {
   return h("div", { class: "stat" }, h("b", {}, value), h("span", {}, label));
 }
 
-const duration = (ms) => (ms < 1000 ? "—" : ms < 60_000 ? `${Math.round(ms / 1000)} 秒` : `${(ms / 60_000).toFixed(1)} 分钟`);
+export const duration = (ms) => (ms < 1000 ? "—" : ms < 60_000 ? `${Math.round(ms / 1000)} 秒` : `${(ms / 60_000).toFixed(1)} 分钟`);
 
 // ---------------------------------------------------------------------------
 
@@ -178,8 +178,12 @@ async function eventDetail(slug, name, rerender) {
   const error = errorBox();
   const extra = { name, by: eventState.by, prop: eventState.prop, value: eventState.value };
   let trend;
+  let catalog = null;
   try {
-    trend = await api(`/api/apps/${slug}/events/trend?${query(extra)}`);
+    [trend, { catalog }] = await Promise.all([
+      api(`/api/apps/${slug}/events/trend?${query(extra)}`),
+      api(`/api/apps/${slug}/catalog`),
+    ]);
   } catch (e) {
     return h("p", { class: "error" }, `加载失败：${e.code ?? e.message}`);
   }
@@ -193,6 +197,7 @@ async function eventDetail(slug, name, rerender) {
   const by = h("input", { placeholder: "按属性分组，如 kind", value: eventState.by, size: 16 });
   const prop = h("input", { placeholder: "只看属性", value: eventState.prop, size: 12 });
   const value = h("input", { placeholder: "等于", value: eventState.value, size: 12 });
+  const entry = catalog?.events?.find((e) => e.name === name);
   const total = trend.series.reduce((sum, s) => sum + s.total, 0);
 
   const rows = h("tbody", {});
@@ -202,7 +207,7 @@ async function eventDetail(slug, name, rerender) {
     const raw = await api(`/api/apps/${slug}/events/raw?${query({ name, prop: eventState.prop, value: eventState.value, before, limit: 30 })}`);
     for (const e of raw.events) {
       rows.append(h("tr", {},
-        h("td", {}, fmt(e.at)),
+        h("td", {}, e.sessionId ? h("a", { href: `#/sessions/${encodeURIComponent(e.sessionId)}`, title: "看这个会话的时间线" }, fmt(e.at)) : fmt(e.at)),
         h("td", {}, e.deviceId ? h("code", {}, e.deviceId.slice(0, 12)) : "服务端", e.person ? ` ${e.person}` : ""),
         h("td", {}, `${e.platform} ${e.release}`),
         h("td", {}, h("pre", { class: "props" }, e.props ? JSON.stringify(e.props) : "")),
@@ -219,6 +224,7 @@ async function eventDetail(slug, name, rerender) {
   return h("div", {},
     h("div", { class: "card" },
       h("div", { class: "row between" }, h("b", {}, h("code", {}, name)), h("span", { class: "muted" }, `${num(total)} 次`)),
+      entry ? h("p", { class: "muted" }, entry.description) : (catalog && !name.startsWith("$") ? h("p", { class: "note" }, "这个事件没有登记在事件目录里。") : null),
       h("form", { class: "controls", onsubmit: apply }, by, prop, value, h("button", { type: "submit" }, "应用")),
       barChart(trend.days, trend.series),
       legend(trend.series),
