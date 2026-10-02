@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "moli-insight",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+
+  // The dashboard is a static single-page app. Requests that match no worker
+  // route fall through to it.
+  "assets": {
+    "directory": "../dashboard/public",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/v1/*", "/mcp", "/healthz"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "moli-insight",
+      // Replace with the id printed by `wrangler d1 create moli-insight`.
+      // Local development (`--local`) does not use it.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Retention: once a day, delete expired rows in batches.
+  "triggers": { "crons": ["17 3 * * *"] }
+}

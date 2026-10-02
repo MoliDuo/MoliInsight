@@ -1,0 +1,6 @@
+{
+  "name": "@moli-insight/dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The dashboard, a static single-page app served by the worker. M0 is a placeholder page."
+}

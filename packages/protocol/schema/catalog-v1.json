@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "events": {
+      "maxItems": 500,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^\\$?[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "props": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "object",
+                    "array"
+                  ]
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "enum": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                },
+                "unit": {
+                  "type": "string",
+                  "maxLength": 32
+                }
+              },
+              "required": [
+                "type",
+                "description"
+              ]
+            }
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "product",
+              "debug"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ]
+      }
+    },
+    "metrics": {
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "kind": {
+            "type": "string",
+            "const": "ratio"
+          },
+          "numerator": {
+            "type": "object",
+            "properties": {
+              "event": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^\\$?[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+              },
+              "where": {
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "prop": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}(\\.[A-Za-z_][A-Za-z0-9_]{0,63}){0,2}$"
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "eq",
+                        "neq",
+                        "gt",
+                        "gte",
+                        "lt",
+                        "lte",
+                        "in",
+                        "exists"
+                      ]
+                    },
+                    "value": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        },
+                        {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "prop",
+                    "op"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "denominator": {
+            "type": "object",
+            "properties": {
+              "event": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^\\$?[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+              },
+              "where": {
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "prop": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}(\\.[A-Za-z_][A-Za-z0-9_]{0,63}){0,2}$"
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "eq",
+                        "neq",
+                        "gt",
+                        "gte",
+                        "lt",
+                        "lte",
+                        "in",
+                        "exists"
+                      ]
+                    },
+                    "value": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        },
+                        {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "prop",
+                    "op"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "event"
+            ]
+          },
+          "groupBy": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}(\\.[A-Za-z_][A-Za-z0-9_]{0,63}){0,2}$"
+            }
+          },
+          "goodDirection": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "kind",
+          "numerator",
+          "denominator"
+        ]
+      }
+    },
+    "funnels": {
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "steps": {
+            "minItems": 2,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "event": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^\\$?[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*$"
+                },
+                "where": {
+                  "maxItems": 8,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "prop": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}(\\.[A-Za-z_][A-Za-z0-9_]{0,63}){0,2}$"
+                      },
+                      "op": {
+                        "type": "string",
+                        "enum": [
+                          "eq",
+                          "neq",
+                          "gt",
+                          "gte",
+                          "lt",
+                          "lte",
+                          "in",
+                          "exists"
+                        ]
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              }
+                            ]
+                          },
+                          {
+                            "maxItems": 50,
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 200
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "prop",
+                      "op"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "event"
+              ]
+            }
+          },
+          "windowMs": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 2592000000
+          },
+          "by": {
+            "type": "string",
+            "enum": [
+              "session",
+              "device"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "steps",
+          "windowMs"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "events"
+  ],
+  "$id": "https://insight.moli.invalid/schema/catalog-v1.json",
+  "title": "MoliInsight event catalog v1"
+}

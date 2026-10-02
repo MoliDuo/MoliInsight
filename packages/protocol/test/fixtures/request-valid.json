@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "sentAt": "2026-10-02T08:00:00.000Z",
+  "context": {
+    "platform": "web",
+    "release": "dae13efc",
+    "deviceId": "dev_01J9ZK3Q8X4V",
+    "deviceClass": "phone",
+    "os": "iOS 26",
+    "client": "Safari 26",
+    "viewport": [390, 844],
+    "locale": "zh-CN",
+    "timeZone": "Asia/Shanghai",
+    "standalone": true
+  },
+  "events": [
+    {
+      "id": "01926f8e-3c2a-7b1d-9a4e-5f6d7c8b9a0e",
+      "name": "record.submit",
+      "occurredAt": "2026-10-02T07:59:58.120Z",
+      "sessionId": "ses_01J9ZK3Q9A1B",
+      "route": "/records?new",
+      "props": { "imageCount": 2, "textLength": 14, "msSinceOpen": 8300 }
+    },
+    {
+      "id": "01926f8e-3c2b-7c00-8000-000000000001",
+      "name": "$tap",
+      "occurredAt": "2026-10-02T07:59:58.900Z",
+      "sessionId": "ses_01J9ZK3Q9A1B",
+      "props": { "target": "topbar.period_next" }
+    }
+  ]
+}

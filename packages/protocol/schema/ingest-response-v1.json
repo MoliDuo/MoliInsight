@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "accepted": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "duplicates": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "invalid_event",
+              "invalid_id",
+              "invalid_name",
+              "invalid_time",
+              "invalid_mono",
+              "invalid_session",
+              "invalid_correlation",
+              "invalid_route",
+              "invalid_props",
+              "props_too_deep",
+              "props_too_large",
+              "invalid_standard_props"
+            ]
+          }
+        },
+        "required": [
+          "index",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": [
+    "accepted",
+    "duplicates",
+    "rejected"
+  ],
+  "$id": "https://insight.moli.invalid/schema/ingest-response-v1.json",
+  "title": "MoliInsight ingest response v1"
+}

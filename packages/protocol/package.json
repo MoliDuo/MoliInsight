@@ -1,0 +1,26 @@
+{
+  "name": "@moli-insight/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MoliInsight ingest protocol v1: Zod schemas, types and normalisation rules. The single source of truth for the wire contract.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "schema"
+  ],
+  "scripts": {
+    "schema:gen": "node scripts/gen-schema.ts",
+    "schema:check": "node scripts/gen-schema.ts --check"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  }
+}

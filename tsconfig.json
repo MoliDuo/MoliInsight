@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/protocol" },
+    { "path": "packages/insight-web" },
+    { "path": "packages/insight-node" },
+    { "path": "apps/worker" }
+  ]
+}

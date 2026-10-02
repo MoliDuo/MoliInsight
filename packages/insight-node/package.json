@@ -1,0 +1,10 @@
+{
+  "name": "@moli-insight/node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MoliInsight server SDK: a one-line relay for route handlers and a sender for server-side events. M0 holds the final API as types; the implementation lands in M2.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

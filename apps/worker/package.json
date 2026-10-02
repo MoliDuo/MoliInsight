@@ -1,0 +1,21 @@
+{
+  "name": "@moli-insight/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The MoliInsight server: ingest, export, MCP and the retention cron, on Cloudflare Workers with D1.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "migrate:local": "wrangler d1 migrations apply moli-insight --local",
+    "migrate:remote": "wrangler d1 migrations apply moli-insight --remote",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@moli-insight/protocol": "*",
+    "hono": "^4.13.12"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261002.1",
+    "wrangler": "^4.146.0"
+  }
+}
