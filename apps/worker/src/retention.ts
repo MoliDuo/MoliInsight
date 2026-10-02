@@ -1,3 +1,4 @@
+import { AUDIT_DAYS } from "./audit.ts";
 import { DAY_MS, addDays, dayOf, dayStart } from "./days.ts";
 import { HIGH_FREQUENCY_DAYS, HIGH_FREQUENCY_EVENTS } from "./rollup.ts";
 
@@ -22,7 +23,7 @@ export interface RetentionResult {
 
 /**
  * Deletes what is older than each app's retention, in batches so one run never
- * holds the database for long, and clears old login failures.
+ * holds the database for long, and drops audit rows past their year.
  */
 export async function runRetention(
   db: D1Database,
@@ -97,6 +98,8 @@ export async function runRetention(
         .run();
     }
   }
+
+  await db.prepare("DELETE FROM audit_log WHERE at < ?1").bind(nowMs - AUDIT_DAYS * DAY_MS).run();
 
   return { eventsDeleted, sessionsDeleted, more };
 }

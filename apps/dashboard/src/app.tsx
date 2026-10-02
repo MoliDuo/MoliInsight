@@ -30,6 +30,7 @@ const NavigationPage = page(() => import("@/routes/experience"), "NavigationPage
 const UsagePage = page(() => import("@/routes/experience"), "UsagePage");
 const AppSettingsPage = page(() => import("@/routes/settings-app"), "AppSettingsPage");
 const PeoplePage = page(() => import("@/routes/settings-global"), "PeoplePage");
+const ActivityPage = page(() => import("@/routes/activity"), "ActivityPage");
 const TokensPage = page(() => import("@/routes/settings-global"), "TokensPage");
 const OnboardingPage = page(() => import("@/routes/onboarding"), "OnboardingPage");
 
@@ -39,7 +40,7 @@ export const queryClient = new QueryClient({
 
 function Root() {
   const client = useQueryClient();
-  const me = useQuery({ queryKey: ["me"], queryFn: () => api<{ authenticated: boolean }>("/api/me") });
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api<{ authenticated: boolean; user?: string }>("/api/me") });
   useEffect(() => {
     // A 401 anywhere means the session ended: show the login page and drop what was cached.
     hooks.unauthorized = () => client.setQueryData(["me"], { authenticated: false });
@@ -75,6 +76,7 @@ const home = createRoute({ getParentRoute: () => rootRoute, path: "/", component
 const onboarding = route("/new", OnboardingPage);
 const people = route("/settings/people", PeoplePage);
 const tokens = route("/settings/tokens", TokensPage);
+const activity = route("/settings/activity", ActivityPage);
 
 const appRoot = createRoute({
   getParentRoute: () => rootRoute,
@@ -92,7 +94,7 @@ const eventsIndex = createRoute({ getParentRoute: () => events, path: "/", compo
 const eventDetail = createRoute({ getParentRoute: () => events, path: "$name", component: EventDetail });
 
 const routeTree = rootRoute.addChildren([
-  home, onboarding, people, tokens,
+  home, onboarding, people, tokens, activity,
   appRoot.addChildren([
     child("overview", OverviewPage),
     events.addChildren([eventsIndex, eventDetail]),

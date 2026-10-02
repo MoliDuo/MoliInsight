@@ -125,6 +125,9 @@ describe("finishing sign-in", () => {
     expect(await (await h.request("/api/me", { headers: { cookie: session.split(";")[0]! } })).json()).toEqual({ authenticated: true, user: USER });
     // The attempt's cookie is spent.
     expect(cookieOf(response, "mi_oidc")).toMatch(/mi_oidc=;/);
+    // The sign-in is on record, under the Authelia username.
+    const row = await h.env.DB.prepare("SELECT user, action FROM audit_log WHERE action = 'auth.login' ORDER BY id DESC").first();
+    expect(row).toEqual({ user: USER, action: "auth.login" });
 
     // The worker proved who it is, and that the code was its own.
     const [token] = fake.tokenRequests;
@@ -151,6 +154,9 @@ describe("finishing sign-in", () => {
     const response = await signIn();
     expect(response.headers.get("location")).toBe("/?login_error=forbidden");
     expect(cookieOf(response, "mi_session")).toBeUndefined();
+    // The refusal is on record, with the name that was turned away.
+    const row = await h.env.DB.prepare("SELECT user, action FROM audit_log WHERE action = 'auth.refused'").first();
+    expect(row).toEqual({ user: "yilin-not-listed", action: "auth.refused" });
   });
 
   it("refuses everyone when the list is empty", async () => {

@@ -28,4 +28,4 @@ export interface Deps {
   fetch: typeof fetch;
 }
 
-export type AppEnv = { Bindings: Env; Variables: { deps: Deps } };
+export type AppEnv = { Bindings: Env; Variables: { deps: Deps; /** The signed-in Authelia username, set by `requireSession`. */ user?: string } };

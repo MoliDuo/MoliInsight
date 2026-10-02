@@ -1,9 +1,10 @@
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import clsx from "clsx";
 import {
-  Activity, ChartColumn, Filter, Gauge, GitCompare, KeyRound, ListTree, LogOut, Menu, Monitor, MousePointerClick,
-  Moon, Route as RouteIcon, Settings, Sun, Users, X, type LucideIcon,
+  Activity, ChartColumn, Filter, Gauge, GitCompare, History, KeyRound, ListTree, LogOut, Menu, Monitor, MousePointerClick,
+  Moon, Route as RouteIcon, Settings, Sun, User, Users, X, type LucideIcon,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -67,6 +68,7 @@ export function Shell({ onLogout }: { onLogout: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const user = useQueryClient().getQueryData<{ user?: string }>(["me"])?.user;
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const section = location.pathname.split("/")[2] ?? "overview";
@@ -108,8 +110,15 @@ export function Shell({ onLogout }: { onLogout: () => void }) {
         ) : <Group>设置</Group>}
         <Plain to="/settings/people" label="人员" icon={Users} onNavigate={close} />
         <Plain to="/settings/tokens" label="管理令牌" icon={KeyRound} onNavigate={close} />
+        <Plain to="/settings/activity" label="操作记录" icon={History} onNavigate={close} />
       </nav>
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+      {user ? (
+        <div className="mt-3 flex items-center gap-2 border-t border-border px-1 pt-3 text-sm" title="当前登录的 Authelia 用户">
+          <User className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium">{user}</span>
+        </div>
+      ) : null}
+      <div className={clsx("flex items-center justify-between gap-2 pt-3", user ? "" : "mt-3 border-t border-border")}>
         <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="主题">
           {THEMES.map(([value, Icon, label]) => (
             <button key={value} type="button" title={label} aria-label={label} aria-pressed={theme === value} onClick={() => setTheme(value)}

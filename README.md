@@ -30,7 +30,7 @@ INSIGHT_URL=http://localhost:8787 INSIGHT_KEY=mi_... \
   node packages/cli/src/bin.ts import ~/path/to/usage-2026-10-02.jsonl
 ```
 
-The dashboard is a React single-page app in `apps/dashboard` (Vite, Tailwind, TanStack Query and Router, Recharts). Pages: overview with change against the previous period, events, sessions, funnels and metrics, release comparison, friction, performance, navigation, feature usage, and per-app settings (keys, devices, event catalog upload with a dry run, MoliSwitch import, export, retention, delete) plus people and admin tokens. Filters live in the URL, so any view can be shared as a link. Days begin at `DAY_OFFSET_MINUTES` in `apps/worker/wrangler.jsonc` (480 = UTC+8); change it before the first night's rollup, or old daily counts stay on the old boundary.
+The dashboard is a React single-page app in `apps/dashboard` (Vite, Tailwind, TanStack Query and Router, Recharts). Pages: overview with change against the previous period, events, sessions, funnels and metrics, release comparison, friction, performance, navigation, feature usage, and per-app settings (keys, devices, event catalog upload with a dry run, MoliSwitch import, export, retention, delete) plus people, admin tokens and the activity log. Filters live in the URL, so any view can be shared as a link. Days begin at `DAY_OFFSET_MINUTES` in `apps/worker/wrangler.jsonc` (480 = UTC+8); change it before the first night's rollup, or old daily counts stay on the old boundary.
 
 Read the data back (needs a dashboard session, or an admin token `mia_…` from the admin page; the format is in [docs/export-v1.md](docs/export-v1.md)):
 
@@ -54,7 +54,9 @@ cd /work/MoliSpec/tools/authelia
 
 `CLIENT_SECRET` is shown once: put it in `OIDC_CLIENT_SECRET` (`wrangler secret put` in production, `.dev.vars` locally). Who may use the dashboard is `OIDC_ALLOWED_USERS` in `apps/worker/wrangler.jsonc`, a list of Authelia usernames. Everyone else is turned away even with a valid Authelia login, and taking a name off the list ends their session at once. To end every session, change `SESSION_SECRET`.
 
-Export and MCP use admin tokens (`mia_…`), not this sign-in.
+The sidebar shows who is signed in, and the Activity page (操作记录) lists who changed what: sign-ins and refusals, apps, keys, tokens, people, devices, funnels, catalog uploads and log imports (one row per import, however many batches). It records changes, not views, never holds a key or token (only its prefix), and keeps a year.
+
+Export and MCP use admin tokens (`mia_…`), not this sign-in, so what they do is not in the Activity page.
 
 ## Deploy
 

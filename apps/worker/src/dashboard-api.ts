@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { addDays, dayOf, dayOffset, daysBetween, isDay } from "./days.ts";
 import type { AppEnv } from "./env.ts";
+import { audit } from "./audit.ts";
 import { requireSession } from "./session.ts";
 import { FunnelSchema, type Catalog } from "@moli-insight/protocol";
 import {
@@ -183,6 +184,7 @@ stats.put("/api/apps/:slug/funnels/:name", requireSession, async (c) => {
     `INSERT INTO saved_funnels (app_id, name, definition, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4)
      ON CONFLICT (app_id, name) DO UPDATE SET definition = excluded.definition, updated_at = excluded.updated_at`,
   ).bind(app.id, nameOk.data, JSON.stringify(body.data), now).run();
+  await audit(c, "funnel.save", `${c.req.param("slug")}/${nameOk.data}`);
   return c.json({ ok: true });
 });
 
@@ -191,6 +193,7 @@ stats.delete("/api/apps/:slug/funnels/:name", requireSession, async (c) => {
     "DELETE FROM saved_funnels WHERE name = ?2 AND app_id = (SELECT id FROM apps WHERE slug = ?1)",
   ).bind(c.req.param("slug"), c.req.param("name")).run();
   if (result.meta.changes === 0) return c.json({ error: "not_found" }, 404);
+  await audit(c, "funnel.delete", `${c.req.param("slug")}/${c.req.param("name")}`);
   return c.json({ ok: true });
 });
 

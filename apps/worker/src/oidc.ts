@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { fromBase64url, randomToken, sha256Base64url, signPayload, timingSafeEqual, verifyPayload } from "./crypto.ts";
+import { audit } from "./audit.ts";
 import type { AppEnv } from "./env.ts";
 import { isAllowedUser, isSecure, startSession } from "./session.ts";
 
@@ -142,8 +143,12 @@ oidc.get("/auth/callback", async (c) => {
     const profile = (await info.json()) as { sub?: string; preferred_username?: string };
     if (profile.sub !== claims.sub || !profile.preferred_username) return c.redirect(failure("failed"));
 
-    if (!isAllowedUser(c.env, profile.preferred_username)) return c.redirect(failure("forbidden"));
+    if (!isAllowedUser(c.env, profile.preferred_username)) {
+      await audit(c, "auth.refused", "", {}, profile.preferred_username);
+      return c.redirect(failure("forbidden"));
+    }
     await startSession(c, profile.preferred_username);
+    await audit(c, "auth.login", "", {}, profile.preferred_username);
     return c.redirect(pending.next);
   } catch {
     return c.redirect(failure("failed"));

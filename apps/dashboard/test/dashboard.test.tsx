@@ -209,6 +209,17 @@ describe("the dashboard against the real API", { timeout: 20_000 }, () => {
     await screen.findByText("A new one.", {}, { timeout: 5000 });
   });
 
+  it("shows who is signed in and the record of what they changed", async () => {
+    const made = await h.request("/api/people", { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ name: "Audited" }) });
+    expect(made.status).toBe(201);
+    await open("/settings/activity");
+    await screen.findByText("新建人员");
+    const row = screen.getByText("Audited").closest("tr")!;
+    expect(row.textContent).toContain("tester");
+    // The sidebar names the user.
+    expect(within(screen.getByTitle("当前登录的 Authelia 用户")).getByText("tester")).toBeTruthy();
+  });
+
   it("keeps filter values plain in the address bar", async () => {
     await open("/cashier/overview?days=7&release=r1");
     await screen.findByText("平均会话时长");

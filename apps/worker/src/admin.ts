@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "./env.ts";
+import { audit } from "./audit.ts";
 import { createKey } from "./keys.ts";
 import { endSession, requireSameOrigin, requireSession, sessionUser } from "./session.ts";
 
@@ -40,7 +41,9 @@ admin.use("/api/*", requireSameOrigin);
 // ---------------------------------------------------------------------------
 // session
 
-admin.post("/api/logout", (c) => {
+admin.post("/api/logout", async (c) => {
+  const user = await sessionUser(c);
+  if (user) await audit(c, "auth.logout", "", {}, user);
   endSession(c);
   return c.json({ ok: true });
 });
@@ -105,6 +108,7 @@ admin.post("/api/apps", async (c) => {
     throw error;
   }
   const row = await c.env.DB.prepare(`${APP_SELECT} WHERE a.slug = ?1`).bind(body.slug).first<AppRow>();
+  await audit(c, "app.create", body.slug, { name: body.name, retentionDays: body.retentionDays });
   return c.json(appJson(row!), 201);
 });
 
@@ -120,6 +124,7 @@ admin.patch("/api/apps/:slug", async (c) => {
   const row = await c.env.DB.prepare(`${APP_SELECT} WHERE a.slug = ?1`)
     .bind(c.req.param("slug"))
     .first<AppRow>();
+  await audit(c, "app.update", c.req.param("slug"), { ...(body.name !== undefined && { name: body.name }), ...(body.retentionDays !== undefined && { retentionDays: body.retentionDays }) });
   return c.json(appJson(row!));
 });
 
@@ -127,6 +132,7 @@ admin.patch("/api/apps/:slug", async (c) => {
 admin.delete("/api/apps/:slug", async (c) => {
   const result = await c.env.DB.prepare("DELETE FROM apps WHERE slug = ?1").bind(c.req.param("slug")).run();
   if (result.meta.changes === 0) return c.json({ error: "not_found" }, 404);
+  await audit(c, "app.delete", c.req.param("slug"));
   return c.json({ ok: true });
 });
 
@@ -178,17 +184,19 @@ admin.post("/api/apps/:slug/keys", async (c) => {
   )
     .bind(app.id, created.hash, created.prefix, body.label, now())
     .first<{ id: number }>();
+  await audit(c, "key.create", c.req.param("slug"), { prefix: created.prefix, label: body.label });
   return c.json({ id: inserted!.id, key: created.key, prefix: created.prefix }, 201);
 });
 
 admin.post("/api/keys/:id/revoke", async (c) => {
   const { now } = c.get("deps");
-  const result = await c.env.DB.prepare(
-    "UPDATE app_keys SET revoked_at = ?1 WHERE id = ?2 AND revoked_at IS NULL",
+  const revoked = await c.env.DB.prepare(
+    "UPDATE app_keys SET revoked_at = ?1 WHERE id = ?2 AND revoked_at IS NULL RETURNING key_prefix, label",
   )
     .bind(now(), Number(c.req.param("id")))
-    .run();
-  if (result.meta.changes === 0) return c.json({ error: "not_found" }, 404);
+    .first<{ key_prefix: string; label: string }>();
+  if (!revoked) return c.json({ error: "not_found" }, 404);
+  await audit(c, "key.revoke", revoked.key_prefix, { label: revoked.label });
   return c.json({ ok: true });
 });
 
@@ -230,17 +238,19 @@ admin.post("/api/admin-tokens", async (c) => {
   )
     .bind(created.hash, created.prefix, body.label, now())
     .first<{ id: number }>();
+  await audit(c, "token.create", created.prefix, { label: body.label });
   return c.json({ id: inserted!.id, token: created.key, prefix: created.prefix }, 201);
 });
 
 admin.post("/api/admin-tokens/:id/revoke", async (c) => {
   const { now } = c.get("deps");
-  const result = await c.env.DB.prepare(
-    "UPDATE admin_tokens SET revoked_at = ?1 WHERE id = ?2 AND revoked_at IS NULL",
+  const revoked = await c.env.DB.prepare(
+    "UPDATE admin_tokens SET revoked_at = ?1 WHERE id = ?2 AND revoked_at IS NULL RETURNING token_prefix, label",
   )
     .bind(now(), Number(c.req.param("id")))
-    .run();
-  if (result.meta.changes === 0) return c.json({ error: "not_found" }, 404);
+    .first<{ token_prefix: string; label: string }>();
+  if (!revoked) return c.json({ error: "not_found" }, 404);
+  await audit(c, "token.revoke", revoked.token_prefix, { label: revoked.label });
   return c.json({ ok: true });
 });
 
@@ -263,6 +273,7 @@ admin.post("/api/people", async (c) => {
     const row = await c.env.DB.prepare("INSERT INTO people (name, created_at) VALUES (?1, ?2) RETURNING id")
       .bind(body.name, now())
       .first<{ id: number }>();
+    await audit(c, "person.create", body.name);
     return c.json({ id: row!.id, name: body.name }, 201);
   } catch (error) {
     if (String(error).includes("people.name")) return c.json({ error: "name_taken" }, 409);
@@ -271,10 +282,11 @@ admin.post("/api/people", async (c) => {
 });
 
 admin.delete("/api/people/:id", async (c) => {
-  const result = await c.env.DB.prepare("DELETE FROM people WHERE id = ?1")
+  const removed = await c.env.DB.prepare("DELETE FROM people WHERE id = ?1 RETURNING name")
     .bind(Number(c.req.param("id")))
-    .run();
-  if (result.meta.changes === 0) return c.json({ error: "not_found" }, 404);
+    .first<{ name: string }>();
+  if (!removed) return c.json({ error: "not_found" }, 404);
+  await audit(c, "person.delete", removed.name);
   return c.json({ ok: true });
 });
 
@@ -325,23 +337,28 @@ admin.get("/api/apps/:slug/devices", async (c) => {
 admin.put("/api/devices/:id", async (c) => {
   const body = await json(c.req.raw, DevicePatch);
   if (!body) return c.json({ error: "invalid_request" }, 400);
+  let device: { device_id: string } | null;
   try {
-    const result = await c.env.DB.prepare("UPDATE devices SET person_id = ?1 WHERE id = ?2")
+    device = await c.env.DB.prepare("UPDATE devices SET person_id = ?1 WHERE id = ?2 RETURNING device_id")
       .bind(body.personId, Number(c.req.param("id")))
-      .run();
-    if (result.meta.changes === 0) return c.json({ error: "not_found" }, 404);
+      .first<{ device_id: string }>();
   } catch (error) {
     if (String(error).includes("FOREIGN KEY")) return c.json({ error: "person_not_found" }, 404);
     throw error;
   }
+  if (!device) return c.json({ error: "not_found" }, 404);
+  const person = body.personId === null ? null
+    : (await c.env.DB.prepare("SELECT name FROM people WHERE id = ?1").bind(body.personId).first<{ name: string }>())?.name ?? null;
+  await audit(c, "device.assign", device.device_id, { person });
   return c.json({ ok: true });
 });
 
 /** Deletes the device with its sessions and events. */
 admin.delete("/api/devices/:id", async (c) => {
-  const result = await c.env.DB.prepare("DELETE FROM devices WHERE id = ?1")
+  const removed = await c.env.DB.prepare("DELETE FROM devices WHERE id = ?1 RETURNING device_id")
     .bind(Number(c.req.param("id")))
-    .run();
-  if (result.meta.changes === 0) return c.json({ error: "not_found" }, 404);
+    .first<{ device_id: string }>();
+  if (!removed) return c.json({ error: "not_found" }, 404);
+  await audit(c, "device.delete", removed.device_id);
   return c.json({ ok: true });
 });

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { processIngest, type IngestResponse } from "@moli-insight/protocol";
+import { audit, auditImport } from "./audit.ts";
 import { BodyTooLarge, UnsupportedEncoding, readBodyText } from "./body.ts";
 import { catalogCounts, parseCatalogRequest, saveCatalog } from "./catalog.ts";
 import { dayOffset } from "./days.ts";
@@ -25,7 +26,10 @@ setup.put("/api/apps/:slug/catalog", async (c) => {
   const parsed = await parseCatalogRequest(c.req.raw);
   if (!parsed.ok) return c.json(parsed.body, parsed.status);
   const dryRun = c.req.query("dryRun") === "1";
-  if (!dryRun) await saveCatalog(c.env.DB, id, parsed.catalog, c.get("deps").now());
+  if (!dryRun) {
+    await saveCatalog(c.env.DB, id, parsed.catalog, c.get("deps").now());
+    await audit(c, "catalog.replace", c.req.param("slug"), catalogCounts(parsed.catalog));
+  }
   return c.json({ ok: true, dryRun, ...catalogCounts(parsed.catalog) });
 });
 
@@ -58,5 +62,6 @@ setup.post("/api/apps/:slug/import", async (c) => {
     dayOffsetMin: dayOffset(c.env.DAY_OFFSET_MINUTES),
   });
   const response: IngestResponse = { accepted: stored.accepted, duplicates: stored.duplicates, rejected: processed.rejected };
+  await auditImport(c, c.req.param("slug"), { accepted: stored.accepted, duplicates: stored.duplicates, rejected: processed.rejected.length });
   return c.json(response);
 });

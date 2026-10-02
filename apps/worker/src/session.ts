@@ -50,7 +50,9 @@ export async function hasSession(c: Context): Promise<boolean> {
 
 /** Rejects requests without a valid dashboard session. */
 export const requireSession: MiddlewareHandler<AppEnv> = async (c, next) => {
-  if (!(await hasSession(c))) return c.json({ error: "unauthorized" }, 401);
+  const user = await sessionUser(c);
+  if (!user) return c.json({ error: "unauthorized" }, 401);
+  c.set("user", user);
   await next();
 };
 

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { SCHEMA_VERSION } from "@moli-insight/protocol";
 import { admin } from "./admin.ts";
+import { auditRoutes } from "./audit.ts";
 import { catalogRoutes } from "./catalog.ts";
 import type { AppEnv, Deps, Env } from "./env.ts";
 import { exportRoutes } from "./export.ts";
@@ -31,6 +32,7 @@ export function createApp(deps: Deps = { now: () => Date.now(), fetch: (input, i
   app.route("/", admin);
   app.route("/", stats);
   app.route("/", setup);
+  app.route("/", auditRoutes);
   app.route("/", mcp);
 
   return app;
