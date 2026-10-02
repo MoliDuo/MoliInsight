@@ -35,6 +35,10 @@
   // Changing it later leaves old daily counts on the old boundary.
   "vars": { "DAY_OFFSET_MINUTES": "480" },
 
+  // The public address. Cloudflare creates the DNS record and certificate when the
+  // zone is on the same account.
+  "routes": [{ "pattern": "insight.xiangyu.pro", "custom_domain": true }],
+
   // Nightly: count finished days, then delete expired rows in batches.
   "triggers": { "crons": ["17 3 * * *"] }
 }
