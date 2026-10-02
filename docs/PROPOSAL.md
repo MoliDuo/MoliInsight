@@ -110,7 +110,7 @@ Web（有后端）
 
 ## 5. SDK
 
-详细的 API 见 [sdk-api.md](sdk-api.md)，签名在 M0 定稿，实现在 M2。
+详细的 API 见 [sdk-api.md](sdk-api.md)，签名在 M0 定稿，M2 已实现。
 
 ### 5.1 Web SDK（P0）
 - **技术要求**：零依赖，ESM，自带 TS 类型。在服务端渲染（SSR）环境中调用是安全的，会自动变成什么都不做。**gzip 后目标不超过 4KB**，各项自动采集可以单独摇树掉，以免挤占应用的 bundle 预算。
@@ -254,6 +254,25 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 5. 事件目录的上传方式：通过 CLI，还是调用 API。
 6. 如果做好了 MCP：它的地址，以及 token 的配置方式。
 7. 直连的接入说明：ingest key 怎么注入 MoliSwitch 的构建，以及按设备限流的数值。
+
+## M2 完成情况与交回清单
+
+已完成：`insight-web`（gz 约 4.05 KB）、`insight-node`、`clients/swift/`、导入命令补发 `$session_start`、最小导出接口 `GET /v1/export`（NDJSON，游标分页；完整行格式仍在 M3 定稿）、demo 页面 `packages/insight-web/demo/`。
+
+**没有做**，原因如下：
+- Cashier 和 MoliSwitch 仓库没有改动：MoliSwitch 不在这台机器上；Cashier 需要已发布的包和已部署的服务才能接入，且有严格的提交门禁。接入步骤写在 [integration-cashier.md](integration-cashier.md) 和 [clients/swift/README.md](../clients/swift/README.md)。
+- 两个包没有发到 npm（scope 和账号未定），目前是 `private`。
+- Swift 客户端只在 Linux 上跑过测试，并对着本地 worker 做过端到端发送；macOS 上的路径没有验证。demo 页面也还没在真实浏览器里点过（自动采集逻辑由 happy-dom 测试覆盖）。
+- Web SDK 为了 4 KB 预算，事件不带 `mono`，`context` 不带 `locale`。
+
+交回清单（对应第 11 节）：
+1. ingest：`POST <INSIGHT_URL>/v1/ingest`，协议见 [protocol-v1.md](protocol-v1.md)。
+2. 包：`@moli-insight/web@0.1.0`、`@moli-insight/node@0.1.0`（暂名）；签名见 [sdk-api.md](sdk-api.md)：`init({ endpoint, release, autoCapture, enabled })`，`createInsight({ url, key, release, timeoutMs, onError }).relayHandler({ authorize, maxBodyBytes })`。
+3. 环境变量：`INSIGHT_URL`、`INSIGHT_KEY`。key 直接填进部署平台。
+4. localStorage 键前缀 `moli_insight_`（另有 sessionStorage 的 `moli_insight_tab`）。
+5. 事件目录上传：尚未实现，M3/M4 做；格式见 `packages/protocol/schema/catalog-v1.json`。
+6. MCP：尚未实现（M4）。读数据先用 `GET /v1/export?app=<slug>`（看板登录或 `mia_` admin token）。
+7. 直连：key 由 CI 注入或在设置里填；限流为每个 key 120 次/分钟、每台设备 30 次/分钟。
 
 ## 附：Cashier 接入预告（等你交回接口后由我来做）
 - 新建 `src/app/api/telemetry/route.ts`，用 `relayHandler` 加上 `requireAuth` 完成转发。

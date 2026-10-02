@@ -49,7 +49,7 @@ describe("importUsageLog", () => {
   it("sends valid batches with the key and the context from appStart", async () => {
     const server = fakeServer();
     const summary = await importUsageLog(sample, base({ fetch: server.fetch }));
-    expect(summary).toMatchObject({ lines: 9, unreadable: 0, accepted: 9, duplicates: 0, rejected: 0, batches: 1 });
+    expect(summary).toMatchObject({ lines: 9, unreadable: 0, accepted: 10, duplicates: 0, rejected: 0, batches: 1 });
 
     const [request] = server.requests;
     expect(request!.auth).toBe("Bearer mi_testkey");
@@ -69,16 +69,16 @@ describe("importUsageLog", () => {
     const server = fakeServer();
     await importUsageLog(sample, base({ fetch: server.fetch }));
     const again = await importUsageLog(sample, base({ fetch: server.fetch }));
-    expect(again).toMatchObject({ accepted: 0, duplicates: 9 });
-    expect(server.seen.size).toBe(9);
+    expect(again).toMatchObject({ accepted: 0, duplicates: 10 });
+    expect(server.seen.size).toBe(10);
   });
 
   it("filters by event name", async () => {
     const server = fakeServer();
     const only = await importUsageLog(sample, base({ fetch: server.fetch, include: new Set(["switch", "manualSwitch"]) }));
-    expect(only).toMatchObject({ accepted: 3, filtered: 6 });
+    expect(only).toMatchObject({ accepted: 3, filtered: 6 }); // $session_start is not asked for
     const without = await importUsageLog(sample, base({ fetch: fakeServer().fetch, exclude: new Set(["snapshot", "systemInputSourceChanged"]) }));
-    expect(without.accepted).toBe(7);
+    expect(without.accepted).toBe(8);
   });
 
   it("skips events older than the server accepts", async () => {
@@ -93,7 +93,7 @@ describe("importUsageLog", () => {
     const server = fakeServer();
     const text = `not json\n\n{"e":"x"}\n${sample}`;
     const summary = await importUsageLog(text, base({ fetch: server.fetch }));
-    expect(summary).toMatchObject({ unreadable: 2, accepted: 9 });
+    expect(summary).toMatchObject({ unreadable: 2, accepted: 10 });
   });
 
   it("splits at 100 events and at every appStart", async () => {
@@ -102,7 +102,7 @@ describe("importUsageLog", () => {
     ).join("\n");
     const server = fakeServer();
     const summary = await importUsageLog(lines, base({ fetch: server.fetch }));
-    expect(summary).toMatchObject({ accepted: 250, batches: 3 });
+    expect(summary).toMatchObject({ accepted: 251, batches: 3 });
 
     const restart = JSON.stringify({ t: "2026-10-02T14:03:30.000+08:00", mono: 1, e: "appStart", version: "0.3.0" });
     const two = await importUsageLog(`${sample}${restart}\n`, base({ fetch: fakeServer().fetch }));
@@ -112,7 +112,7 @@ describe("importUsageLog", () => {
   it("does not send anything on a dry run", async () => {
     const server = fakeServer();
     const summary = await importUsageLog(sample, base({ fetch: server.fetch, dryRun: true }));
-    expect(summary.accepted).toBe(9);
+    expect(summary.accepted).toBe(10);
     expect(server.requests).toHaveLength(0);
   });
 
@@ -124,7 +124,7 @@ describe("importUsageLog", () => {
       new Error("connection reset"),
     ]);
     const summary = await importUsageLog(sample, base({ fetch: server.fetch, sleep: async (ms) => void waits.push(ms) }));
-    expect(summary.accepted).toBe(9);
+    expect(summary.accepted).toBe(10);
     expect(waits).toEqual([7000, 1000, 2000]);
   });
 

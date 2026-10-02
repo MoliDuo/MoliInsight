@@ -92,6 +92,18 @@ async function group(
         events: [],
       };
       groups.push(current);
+      // A process run is a session, so the standard event that says so goes in with it.
+      // Its id comes from the line too: importing again must not add a second one.
+      const fresh = nowMs - at <= MAX_AGE_MS;
+      if (fresh && !options.exclude?.has("$session_start") && (!options.include || options.include.has("$session_start"))) {
+        current.events.push({
+          id: await deterministicUuid(`session|${line}`),
+          name: "$session_start",
+          occurredAt: event.occurredAt,
+          props: { navType: "launch" },
+          sessionId: current.sessionId,
+        });
+      }
     }
 
     if (options.include && !options.include.has(event.name)) {

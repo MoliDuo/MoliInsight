@@ -1,0 +1,54 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoliInsight web SDK demo</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 720px; padding: 16px; }
+  button, a.btn { font: inherit; padding: 8px 14px; margin: 4px 4px 4px 0; cursor: pointer; }
+  pre { background: #f3f3f3; padding: 12px; overflow: auto; max-height: 340px; font-size: 12px; }
+  @media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } pre { background: #222; } }
+</style>
+<h1>Web SDK demo</h1>
+<p>Run <code>npm run build -w @moli-insight/web</code>, serve this folder's parent (<code>npx http-server packages/insight-web</code>) and open <code>/demo/</code>. Nothing leaves this page: <code>fetch</code> and <code>sendBeacon</code> are intercepted and the batches shown below. Each button triggers one standard event from the web profile.</p>
+
+<button data-track="demo.tap">$tap</button>
+<button data-track="demo.rage">$rage_tap (click it 3 times fast)</button>
+<button data-track="demo.dead" onclick="void 0">$dead_tap (does nothing)</button>
+<button id="screen">$screen</button>
+<button id="error">$error</button>
+<button id="vital">$vital</button>
+<button id="op">$op</button>
+<button id="dialog">$dialog</button>
+<button id="custom">custom event</button>
+<button id="flush"><b>flush now</b></button>
+<p>Switch to another tab and back for <code>$visibility</code>. The first load emitted <code>$session_start</code>.</p>
+
+<pre id="log">waiting for the first batch…</pre>
+
+<script>
+  const log = document.getElementById("log");
+  let shown = 0;
+  const show = (raw, how) => {
+    try {
+      const batch = JSON.parse(raw);
+      shown += batch.events.length;
+      log.textContent = `[${how}] ${batch.events.length} events, ${shown} so far\n` +
+        batch.events.map((e) => e.name + (e.props ? " " + JSON.stringify(e.props) : "")).join("\n") +
+        "\n\n" + log.textContent;
+    } catch {}
+  };
+  window.fetch = async (_url, init) => { show(init.body, "fetch"); return new Response(null, { status: 204 }); };
+  navigator.sendBeacon = (_url, body) => { show(body, "beacon"); return true; };
+</script>
+<script type="module">
+  import { init, track, trackScreen, reportVital, startOp, trackDialog, flush } from "../dist/index.js";
+  init({ endpoint: "/api/telemetry", release: "demo" });
+  const $ = (id) => document.getElementById(id);
+  $("screen").onclick = () => trackScreen("demo.settings", "click");
+  $("error").onclick = () => setTimeout(() => { throw new Error("demo error"); });
+  $("vital").onclick = () => reportVital({ name: "LCP", value: 1234, rating: "good", id: "v1" });
+  $("op").onclick = () => startOp("demo.save").end({ ok: true });
+  $("dialog").onclick = () => { trackDialog("demo.confirm", "open"); setTimeout(() => trackDialog("demo.confirm", "close", { closeBy: "button" }), 300); };
+  $("custom").onclick = () => track("demo.custom", { n: 1 });
+  $("flush").onclick = () => flush();
+</script>

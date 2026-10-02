@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { SCHEMA_VERSION } from "@moli-insight/protocol";
 import { admin } from "./admin.ts";
 import type { AppEnv, Deps, Env } from "./env.ts";
+import { exportRoutes } from "./export.ts";
 import { ingest } from "./ingest.ts";
 import { runRetention } from "./retention.ts";
 
@@ -17,6 +18,7 @@ export function createApp(deps: Deps = { now: () => Date.now() }) {
 
   app.get("/healthz", (c) => c.json({ ok: true, schemaVersion: SCHEMA_VERSION }));
   app.route("/", ingest);
+  app.route("/", exportRoutes);
   app.route("/", admin);
 
   return app;

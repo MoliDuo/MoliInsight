@@ -3,8 +3,21 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
-    "types": ["@cloudflare/workers-types"]
+    "types": [
+      "@cloudflare/workers-types"
+    ]
   },
-  "include": ["src", "test", "scripts"],
-  "references": [{ "path": "../../packages/protocol" }]
+  "include": [
+    "src",
+    "test",
+    "scripts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/protocol"
+    },
+    {
+      "path": "../../packages/insight-node"
+    }
+  ]
 }

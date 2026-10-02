@@ -1,11 +1,27 @@
 {
   "name": "@moli-insight/web",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "MoliInsight web SDK. Zero dependencies, ESM, under 4 KB gzipped. M0 holds the final API as types; the implementation lands in M2.",
+  "description": "MoliInsight web SDK. Zero dependencies, ESM, under 4 KB gzipped.",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "devDependencies": {
+    "@moli-insight/protocol": "*",
+    "esbuild": "^0.28.2",
+    "happy-dom": "^20.14.5"
+  },
+  "files": [
+    "dist/index.js",
+    "dist/src/*.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc -b && node scripts/build.ts"
   }
 }

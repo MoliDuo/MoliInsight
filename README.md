@@ -2,7 +2,7 @@
 
 Self-hosted usage data for the Moli apps: one ingest protocol, one database, one dashboard, and an export that an AI can read. See [docs/PROPOSAL.md](docs/PROPOSAL.md) for the design and [docs/protocol-v1.md](docs/protocol-v1.md) for the wire contract.
 
-Status: M0 (contract) and M1 (ingest, admin, retention, import) are done. SDKs, the dashboard and MCP come next.
+Status: M0 (contract), M1 (ingest, admin, retention, import) and the M2 SDKs (web, node, Swift) are done. Wiring them into Cashier and MoliSwitch, the dashboard and MCP come next.
 
 ## Run it locally
 
@@ -28,6 +28,15 @@ Import a MoliSwitch usage log (running it twice adds nothing):
 INSIGHT_URL=http://localhost:8787 INSIGHT_KEY=mi_... \
   node packages/cli/src/bin.ts import ~/path/to/usage-2026-10-02.jsonl
 ```
+
+Read the data back (needs the dashboard cookie, or an admin token `mia_…` from the admin page):
+
+```bash
+curl -H "authorization: Bearer mia_..." "http://localhost:8787/v1/export?app=switch&limit=1000"
+# NDJSON: a header line, one line per event, an end line with `next`; pass it back as &after=
+```
+
+SDKs: [docs/sdk-api.md](docs/sdk-api.md). Swift client for apps without a backend: [clients/swift](clients/swift/README.md). Cashier wiring: [docs/integration-cashier.md](docs/integration-cashier.md).
 
 ## Deploy
 
