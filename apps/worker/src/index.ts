@@ -9,6 +9,7 @@ import { dayOffset } from "./days.ts";
 import { runRetention } from "./retention.ts";
 import { runRollup } from "./rollup.ts";
 import { stats } from "./dashboard-api.ts";
+import { setup } from "./setup-api.ts";
 import { mcp } from "./mcp.ts";
 
 export type { Env } from "./env.ts";
@@ -27,6 +28,7 @@ export function createApp(deps: Deps = { now: () => Date.now() }) {
   app.route("/", exportRoutes);
   app.route("/", admin);
   app.route("/", stats);
+  app.route("/", setup);
   app.route("/", mcp);
 
   return app;

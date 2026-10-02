@@ -5,9 +5,11 @@
   "description": "The MoliInsight server: ingest, export, MCP and the retention cron, on Cloudflare Workers with D1.",
   "type": "module",
   "scripts": {
+    "predev": "npm run build -w @moli-insight/dashboard",
     "dev": "wrangler dev",
     "migrate:local": "wrangler d1 migrations apply moli-insight --local",
     "migrate:remote": "wrangler d1 migrations apply moli-insight --remote",
+    "predeploy": "npm run build -w @moli-insight/dashboard",
     "deploy": "wrangler deploy",
     "hash-password": "node scripts/hash-password.ts"
   },

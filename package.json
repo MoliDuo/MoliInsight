@@ -10,12 +10,14 @@
     "node": ">=22"
   },
   "scripts": {
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && npm run typecheck -w @moli-insight/dashboard",
     "test": "vitest run",
     "schema": "npm run schema:gen -w @moli-insight/protocol",
     "schema:check": "npm run schema:check -w @moli-insight/protocol",
     "migrate:local": "npm run migrate:local -w @moli-insight/worker",
-    "check": "npm run typecheck && npm run test && npm run schema:check"
+    "check": "npm run typecheck && npm run test && npm run schema:check && npm run build",
+    "dev": "node scripts/dev.ts",
+    "build": "npm run build -w @moli-insight/dashboard"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

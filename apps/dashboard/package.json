@@ -2,5 +2,31 @@
   "name": "@moli-insight/dashboard",
   "version": "0.0.0",
   "private": true,
-  "description": "The dashboard, a static single-page app served by the worker. M0 is a placeholder page."
+  "description": "The dashboard: a single-page app built with Vite and served by the worker as static assets.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@moli-insight/protocol": "*",
+    "@radix-ui/react-dialog": "^1.1.0",
+    "@tanstack/react-query": "^5.104.1",
+    "@tanstack/react-router": "^1.170.41",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.50.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1",
+    "sonner": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tailwindcss": "^4.3.3"
+  }
 }

@@ -4,10 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
 
-  // The dashboard is a static single-page app. Requests that match no worker
-  // route fall through to it.
+  // The dashboard is a static single-page app, built by `npm run build -w @moli-insight/dashboard`.
+  // Requests that match no worker route fall through to it.
   "assets": {
-    "directory": "../dashboard/public",
+    "directory": "../dashboard/dist",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/v1/*", "/api/*", "/mcp", "/healthz"]
   },

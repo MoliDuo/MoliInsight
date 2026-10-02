@@ -1,9 +1,7 @@
-import { deterministicUuid, usageLineToEvent, type ImportedEvent } from "@moli-insight/protocol";
+import { BATCH_SIZE, MAX_AGE_MS, planUsageImport } from "@moli-insight/protocol";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-/** The server clamps older events to its seven-day floor, so sending them only distorts the data. */
-export const MAX_AGE_MS = 7 * DAY_MS;
-export const BATCH_SIZE = 100;
+export { BATCH_SIZE, MAX_AGE_MS };
+
 const MAX_ATTEMPTS = 5;
 const MAX_WAIT_MS = 60_000;
 
@@ -36,87 +34,6 @@ export interface ImportSummary {
   duplicates: number;
   rejected: number;
   batches: number;
-}
-
-interface Group {
-  release: string;
-  sessionId: string;
-  os?: string;
-  locale?: string;
-  timeZone?: string;
-  events: (ImportedEvent & { sessionId: string })[];
-}
-
-const str = (v: unknown): string | undefined => (typeof v === "string" && v.length > 0 ? v : undefined);
-
-async function sessionIdFor(deviceId: string, startedAt: string): Promise<string> {
-  const hash = (await deterministicUuid(`${deviceId}|${startedAt}`)).replaceAll("-", "");
-  return `ses_${hash.slice(0, 20)}`;
-}
-
-/**
- * A process run is a session: every `appStart` opens one, and its version,
- * OS and locale describe the batches that follow until the next `appStart`.
- */
-async function group(
-  lines: string[],
-  options: ImportOptions,
-  summary: ImportSummary,
-  nowMs: number,
-): Promise<Group[]> {
-  const groups: Group[] = [];
-  let current: Group | null = null;
-
-  for (const line of lines) {
-    if (line.trim() === "") continue;
-    summary.lines += 1;
-    const event = await usageLineToEvent(line);
-    if (!event) {
-      summary.unreadable += 1;
-      continue;
-    }
-    const at = Date.parse(event.occurredAt);
-    if (Number.isNaN(at)) {
-      summary.unreadable += 1;
-      continue;
-    }
-
-    if (event.name === "appStart" || current === null) {
-      const props = (event.name === "appStart" ? event.props : undefined) ?? {};
-      current = {
-        release: options.release ?? str(props.version) ?? "unknown",
-        sessionId: await sessionIdFor(options.deviceId, event.occurredAt),
-        ...(str(props.macOS) ? { os: String(props.macOS).replace(/^Version\s+/, "").replace(/\s*\(.*$/, "") } : {}),
-        ...(str(props.locale) ? { locale: str(props.locale)! } : {}),
-        ...(str(props.timeZone) ? { timeZone: str(props.timeZone)! } : {}),
-        events: [],
-      };
-      groups.push(current);
-      // A process run is a session, so the standard event that says so goes in with it.
-      // Its id comes from the line too: importing again must not add a second one.
-      const fresh = nowMs - at <= MAX_AGE_MS;
-      if (fresh && !options.exclude?.has("$session_start") && (!options.include || options.include.has("$session_start"))) {
-        current.events.push({
-          id: await deterministicUuid(`session|${line}`),
-          name: "$session_start",
-          occurredAt: event.occurredAt,
-          props: { navType: "launch" },
-          sessionId: current.sessionId,
-        });
-      }
-    }
-
-    if (options.include && !options.include.has(event.name)) {
-      summary.filtered += 1;
-    } else if (options.exclude?.has(event.name)) {
-      summary.filtered += 1;
-    } else if (nowMs - at > MAX_AGE_MS) {
-      summary.tooOld += 1;
-    } else {
-      current.events.push({ ...event, sessionId: current.sessionId });
-    }
-  }
-  return groups;
 }
 
 async function sendBatch(body: unknown, options: ImportOptions): Promise<{ accepted: number; duplicates: number; rejected: number }> {
@@ -154,47 +71,30 @@ async function sendBatch(body: unknown, options: ImportOptions): Promise<{ accep
 
 /** Imports the text of one JSONL file. Safe to run again: the same lines produce the same event ids. */
 export async function importUsageLog(text: string, options: ImportOptions): Promise<ImportSummary> {
+  const nowMs = (options.now ?? Date.now)();
+  const plan = await planUsageImport(text, options, nowMs);
   const summary: ImportSummary = {
-    lines: 0,
-    unreadable: 0,
-    filtered: 0,
-    tooOld: 0,
+    lines: plan.lines,
+    unreadable: plan.unreadable,
+    filtered: plan.filtered,
+    tooOld: plan.tooOld,
     accepted: 0,
     duplicates: 0,
     rejected: 0,
     batches: 0,
   };
-  const nowMs = (options.now ?? Date.now)();
-  const groups = await group(text.split("\n"), options, summary, nowMs);
 
-  for (const g of groups) {
-    for (let i = 0; i < g.events.length; i += BATCH_SIZE) {
-      const events = g.events.slice(i, i + BATCH_SIZE);
-      summary.batches += 1;
-      if (options.dryRun) {
-        summary.accepted += events.length;
-        continue;
-      }
-      const body = {
-        schemaVersion: 1,
-        sentAt: new Date(nowMs).toISOString(),
-        context: {
-          platform: options.platform,
-          release: g.release,
-          deviceId: options.deviceId,
-          ...(options.platform === "macos" || options.platform === "windows" ? { deviceClass: "desktop" } : {}),
-          ...(g.os ? { os: `macOS ${g.os}` } : {}),
-          ...(g.locale ? { locale: g.locale } : {}),
-          ...(g.timeZone ? { timeZone: g.timeZone } : {}),
-        },
-        events,
-      };
-      const result = await sendBatch(body, options);
-      summary.accepted += result.accepted;
-      summary.duplicates += result.duplicates;
-      summary.rejected += result.rejected;
-      options.log?.(`batch ${summary.batches}: +${result.accepted}, ${result.duplicates} already there, ${result.rejected} rejected`);
+  for (const body of plan.batches) {
+    summary.batches += 1;
+    if (options.dryRun) {
+      summary.accepted += (body.events as unknown[]).length;
+      continue;
     }
+    const result = await sendBatch(body, options);
+    summary.accepted += result.accepted;
+    summary.duplicates += result.duplicates;
+    summary.rejected += result.rejected;
+    options.log?.(`batch ${summary.batches}: +${result.accepted}, ${result.duplicates} already there, ${result.rejected} rejected`);
   }
   return summary;
 }

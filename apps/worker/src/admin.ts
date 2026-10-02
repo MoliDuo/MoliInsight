@@ -8,7 +8,9 @@ import { endSession, hasSession, requireSameOrigin, requireSession, startSession
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAILURES = 10;
 
-const slug = z.string().regex(/^[a-z0-9-]{1,40}$/);
+/** These are dashboard pages, not apps: `/new` and `/settings/people` would clash with an app of that name. */
+const RESERVED_SLUGS = new Set(["new", "settings"]);
+const slug = z.string().regex(/^[a-z0-9-]{1,40}$/).refine((s) => !RESERVED_SLUGS.has(s), "reserved");
 const label = z.string().trim().max(80).default("");
 
 const AppCreate = z.object({

@@ -65,6 +65,43 @@ export const catalogRoutes = new Hono<AppEnv>();
 
 const CATALOG_LIMITS = { sent: 256 * 1024, decompressed: 512 * 1024 };
 
+export const catalogCounts = (catalog: Catalog) => ({
+  events: catalog.events.length,
+  metrics: catalog.metrics?.length ?? 0,
+  funnels: catalog.funnels?.length ?? 0,
+});
+
+type CatalogRequest =
+  | { ok: true; catalog: Catalog }
+  | { ok: false; status: 400 | 413 | 415; body: Record<string, unknown> };
+
+/** Reads and checks an uploaded catalog. Both the ingest-key route and the dashboard's use it. */
+export async function parseCatalogRequest(request: Request): Promise<CatalogRequest> {
+  let text: string;
+  try {
+    text = await readBodyText(request, CATALOG_LIMITS);
+  } catch (error) {
+    if (error instanceof BodyTooLarge) return { ok: false, status: 413, body: { error: "payload_too_large" } };
+    if (error instanceof UnsupportedEncoding) return { ok: false, status: 415, body: { error: "unsupported_encoding" } };
+    return { ok: false, status: 400, body: { error: "invalid_request" } };
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return { ok: false, status: 400, body: { error: "invalid_request", message: "the body is not JSON" } };
+  }
+  const parsed = CatalogSchema.safeParse(body);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      status: 400,
+      body: { error: "invalid_catalog", issues: parsed.error.issues.slice(0, 20).map((i) => ({ path: i.path.join("."), message: i.message })) },
+    };
+  }
+  return { ok: true, catalog: parsed.data };
+}
+
 catalogRoutes.put("/v1/catalog", async (c) => {
   const { now } = c.get("deps");
   const token = bearerToken(c.req.raw);
@@ -79,27 +116,8 @@ catalogRoutes.put("/v1/catalog", async (c) => {
     }
   }
 
-  let text: string;
-  try {
-    text = await readBodyText(c.req.raw, CATALOG_LIMITS);
-  } catch (error) {
-    if (error instanceof BodyTooLarge) return c.json({ error: "payload_too_large" }, 413);
-    if (error instanceof UnsupportedEncoding) return c.json({ error: "unsupported_encoding" }, 415);
-    return c.json({ error: "invalid_request" }, 400);
-  }
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    return c.json({ error: "invalid_request", message: "the body is not JSON" }, 400);
-  }
-  const parsed = CatalogSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json(
-      { error: "invalid_catalog", issues: parsed.error.issues.slice(0, 20).map((i) => ({ path: i.path.join("."), message: i.message })) },
-      400,
-    );
-  }
-  await saveCatalog(c.env.DB, auth.appId, parsed.data, now());
-  return c.json({ ok: true, events: parsed.data.events.length, metrics: parsed.data.metrics?.length ?? 0, funnels: parsed.data.funnels?.length ?? 0 });
+  const parsed = await parseCatalogRequest(c.req.raw);
+  if (!parsed.ok) return c.json(parsed.body, parsed.status);
+  await saveCatalog(c.env.DB, auth.appId, parsed.catalog, now());
+  return c.json({ ok: true, ...catalogCounts(parsed.catalog) });
 });
