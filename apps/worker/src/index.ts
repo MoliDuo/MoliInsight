@@ -4,7 +4,10 @@ import { admin } from "./admin.ts";
 import type { AppEnv, Deps, Env } from "./env.ts";
 import { exportRoutes } from "./export.ts";
 import { ingest } from "./ingest.ts";
+import { dayOffset } from "./days.ts";
 import { runRetention } from "./retention.ts";
+import { runRollup } from "./rollup.ts";
+import { stats } from "./dashboard-api.ts";
 
 export type { Env } from "./env.ts";
 
@@ -20,6 +23,7 @@ export function createApp(deps: Deps = { now: () => Date.now() }) {
   app.route("/", ingest);
   app.route("/", exportRoutes);
   app.route("/", admin);
+  app.route("/", stats);
 
   return app;
 }
@@ -30,6 +34,10 @@ export default {
   fetch: app.fetch,
 
   async scheduled(_controller, env, ctx) {
-    ctx.waitUntil(runRetention(env.DB, Date.now()));
+    const offset = dayOffset(env.DAY_OFFSET_MINUTES);
+    // Count finished days before anything is pruned.
+    ctx.waitUntil(
+      runRollup(env.DB, Date.now(), offset).then(() => runRetention(env.DB, Date.now(), { dayOffsetMinutes: offset })),
+    );
   },
 } satisfies ExportedHandler<Env>;

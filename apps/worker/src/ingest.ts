@@ -3,6 +3,7 @@ import { processIngest, type IngestError, type IngestResponse } from "@moli-insi
 import type { AppEnv } from "./env.ts";
 import { BodyTooLarge, UnsupportedEncoding, readBodyText } from "./body.ts";
 import { authenticateIngestKey, bearerToken } from "./keys.ts";
+import { dayOffset } from "./days.ts";
 import { storeBatch } from "./ingest-store.ts";
 
 /** What a client that was told to slow down should wait. The limiter windows are 10 or 60 seconds. */
@@ -65,6 +66,7 @@ ingest.post("/v1/ingest", async (c) => {
     context: processed.context,
     events: processed.events.map((e) => e.event),
     receivedAt,
+    dayOffsetMin: dayOffset(c.env.DAY_OFFSET_MINUTES),
   });
 
   const response: IngestResponse = {

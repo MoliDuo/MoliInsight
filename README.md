@@ -2,7 +2,7 @@
 
 Self-hosted usage data for the Moli apps: one ingest protocol, one database, one dashboard, and an export that an AI can read. See [docs/PROPOSAL.md](docs/PROPOSAL.md) for the design and [docs/protocol-v1.md](docs/protocol-v1.md) for the wire contract.
 
-Status: M0 (contract), M1 (ingest, admin, retention, import) and the M2 SDKs (web, node, Swift) are done. Wiring them into Cashier and MoliSwitch, the dashboard and MCP come next.
+Status: M0 (contract), M1 (ingest, admin, retention, import), the M2 SDKs (web, node, Swift) and M3 (dashboard overview and event browser, daily counts, export format) are done. Wiring the SDKs into Cashier and MoliSwitch, funnels, performance and MCP come next.
 
 ## Run it locally
 
@@ -29,7 +29,9 @@ INSIGHT_URL=http://localhost:8787 INSIGHT_KEY=mi_... \
   node packages/cli/src/bin.ts import ~/path/to/usage-2026-10-02.jsonl
 ```
 
-Read the data back (needs the dashboard cookie, or an admin token `mia_…` from the admin page):
+The dashboard (overview, events, apps) is at the worker's address. Days begin at `DAY_OFFSET_MINUTES` in `apps/worker/wrangler.jsonc` (480 = UTC+8); change it before the first night's rollup, or old daily counts stay on the old boundary.
+
+Read the data back (needs the dashboard cookie, or an admin token `mia_…` from the admin page; the format is in [docs/export-v1.md](docs/export-v1.md)):
 
 ```bash
 curl -H "authorization: Bearer mia_..." "http://localhost:8787/v1/export?app=switch&limit=1000"

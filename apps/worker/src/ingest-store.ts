@@ -1,4 +1,6 @@
 import type { Context, NormalizedEvent } from "@moli-insight/protocol";
+import { DAY_MS } from "./days.ts";
+import { reopenRollup } from "./rollup.ts";
 
 /**
  * D1 allows 100 bound parameters per statement. Events go in several rows per
@@ -13,6 +15,8 @@ export interface StoreInput {
   context: Context;
   events: NormalizedEvent[];
   receivedAt: number;
+  /** The deployment's day boundary, for noticing events that belong to an already counted day. */
+  dayOffsetMin?: number;
 }
 
 export interface StoreResult {
@@ -78,6 +82,11 @@ export async function storeBatch(db: D1Database, input: StoreInput): Promise<Sto
           context.release,
         ),
     );
+  }
+  // An import or a client that was offline brings events for days already counted:
+  // have the nightly job count them again.
+  if (firstOccurred < receivedAt - 3 * DAY_MS) {
+    statements.push(reopenRollup(db, appId, firstOccurred, input.dayOffsetMin ?? 0));
   }
   const eventStatementCount = Math.ceil(events.length / EVENT_ROWS_PER_STATEMENT);
 

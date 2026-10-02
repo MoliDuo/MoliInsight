@@ -10,7 +10,7 @@
 |---|---|---|
 | `POST /v1/ingest` | 上报一批事件 | `Authorization: Bearer mi_…`（ingest key，只写） |
 | `PUT /v1/catalog` | 上传事件目录，整体替换 | 同上，只能改这个 key 所属的 App |
-| `GET /v1/export` | 导出（M3 定稿格式） | `Authorization: Bearer mia_…`（admin token）或看板登录 |
+| `GET /v1/export` | 导出，格式见 [export-v1.md](export-v1.md) | `Authorization: Bearer mia_…`（admin token）或看板登录 |
 | `/mcp` | 给 Claude 查询（M4） | admin token |
 
 key 的前缀固定：ingest key 以 `mi_` 开头，admin token 以 `mia_` 开头。这样密钥扫描工具和人都能看出泄露的是什么。服务端只保存 key 的 HMAC，key 本身只在生成时显示一次。

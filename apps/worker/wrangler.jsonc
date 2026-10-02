@@ -31,6 +31,10 @@
     { "name": "DEVICE_LIMITER", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } }
   ],
 
-  // Retention: once a day, delete expired rows in batches.
+  // Where a day begins on the dashboard and in the daily counts: minutes east of UTC (480 = UTC+8).
+  // Changing it later leaves old daily counts on the old boundary.
+  "vars": { "DAY_OFFSET_MINUTES": "480" },
+
+  // Nightly: count finished days, then delete expired rows in batches.
   "triggers": { "crons": ["17 3 * * *"] }
 }

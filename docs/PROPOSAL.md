@@ -170,7 +170,7 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 - **默认 `ndjson` 流式输出**，按天分页：第一行是头部（格式、版本、App、时间范围、事件目录、人、设备、版本列表、汇总），之后每行一条原始事件，按时间排序。不一次性返回完整 JSON，因为单个响应有大小限制，也撑不住几十万行。
 - 需要整份 JSON 的场景，用 `format=json` 并限制在一天或一个较小的范围内。
 - 头部里的汇总和看板概览、事件浏览器使用相同的口径。
-- 精确的行格式在 M3 定稿。
+- 行格式已在 M3 定稿，见 [export-v1.md](export-v1.md)。
 
 ### 7.2 MCP 接口（P1）`/mcp`（Streamable HTTP，Bearer admin token）
 - **工具**：
@@ -254,6 +254,15 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 5. 事件目录的上传方式：通过 CLI，还是调用 API。
 6. 如果做好了 MCP：它的地址，以及 token 的配置方式。
 7. 直连的接入说明：ingest key 怎么注入 MoliSwitch 的构建，以及按设备限流的数值。
+
+## M3 完成情况
+
+已完成：
+- 日汇总表 `daily_events`（迁移 0003）。夜间 cron 先汇总已结束的日子，再按保留期清理；`$tap` 和 `$visibility` 的原始行只留 30 天，汇总计数留到保留期结束。晚到的旧事件（导入、离线客户端）会让下一次 cron 重新汇总那些天。天的边界由环境变量 `DAY_OFFSET_MINUTES` 决定（`wrangler.jsonc` 里默认 480，即 UTC+8）。
+- 看板 P0 页面：**概览**（会话、活跃设备、有使用的天数、事件、平均时长；每天的会话；时长分布；平台；按人；版本；可按应用、时间范围、平台、版本、人筛选）、**事件浏览器**（事件名列表和计数；趋势图，可按某个属性分组或筛选；原始记录翻页）、**管理**（M1 已做）。读取走日汇总表；按属性分组、按人或设备筛选必须扫原始事件，最多取最新 20000 条并提示。
+- 导出格式定稿：[export-v1.md](export-v1.md)，头部带目录、人、设备、版本、汇总和事件计数；`format=json` 限一周以内。
+
+没有做：Session 时间线、漏斗与比率、版本对比、摩擦点、性能、导航（P1/P2，属于 M4）。看板还没有在真实浏览器里点过（页面逻辑在 happy-dom 里对着真实 API 跑过）。
 
 ## M2 完成情况与交回清单
 

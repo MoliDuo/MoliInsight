@@ -80,4 +80,34 @@ describe("GET /v1/export", () => {
     expect((await h.request("/v1/export?app=switch&after=x", { headers: { cookie } })).status).toBe(400);
     expect((await h.request("/v1/export", { headers: { cookie } })).status).toBe(400);
   });
+
+  it("puts what an analyst needs in the first page's header only", async () => {
+    const [header] = (await lines(await h.request("/v1/export?app=switch&limit=1", { headers: { cookie } }))) as [Record<string, any>];
+    expect(header).toMatchObject({
+      format: "moli-insight-export",
+      version: 1,
+      retentionDays: 90,
+      catalog: [],
+      people: [],
+      summary: { sessions: 1, devices: 1, events: 2 },
+    });
+    expect(header.devices).toEqual([expect.objectContaining({ deviceId: "dev_macosdevice1", platform: "macos" })]);
+    expect(header.releases).toEqual([{ release: "r1", devices: 1, sessions: 1 }]);
+    expect(header.eventCounts).toEqual(expect.arrayContaining([{ name: "switch", events: 1 }, { name: "manualSwitch", events: 1 }]));
+
+    const next = (await lines(await h.request("/v1/export?app=switch&limit=1", { headers: { cookie } }))).at(-1)!.next;
+    const [second] = (await lines(await h.request(`/v1/export?app=switch&limit=1&after=${next}`, { headers: { cookie } }))) as [Record<string, any>];
+    expect(second.catalog).toBeUndefined();
+  });
+
+  it("returns one JSON object for a short range, and refuses a long one", async () => {
+    const from = new Date(h.clock.now - 3 * 24 * 3600 * 1000).toISOString();
+    const response = await h.request(`/v1/export?app=cashier&format=json&from=${from}`, { headers: { cookie } });
+    const body = (await response.json()) as any;
+    expect(body.events.map((e: any) => e.name)).toEqual(["$tap", "record.open"]);
+    expect(body.end.next).toBeNull();
+    const long = await h.request("/v1/export?app=cashier&format=json&from=2026-01-01", { headers: { cookie } });
+    expect(long.status).toBe(400);
+    expect(((await long.json()) as any).error).toBe("range_too_large");
+  });
 });

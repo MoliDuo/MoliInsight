@@ -6,6 +6,8 @@ export interface Env {
   SESSION_SECRET: string;
   /** `pbkdf2-sha256$…`, made by `npm run hash-password`. */
   DASHBOARD_PASSWORD_HASH: string;
+  /** Minutes east of UTC where the dashboard's days begin, such as "480" for UTC+8. Unset means UTC. */
+  DAY_OFFSET_MINUTES?: string;
   /** Rate limit per ingest key. Without the binding there is no limit. */
   INGEST_LIMITER?: RateLimit;
   /** Rate limit per device, for direct clients whose key can be extracted. */
