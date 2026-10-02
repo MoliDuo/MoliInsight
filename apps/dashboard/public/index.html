@@ -3,9 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>MoliInsight</title>
+    <link rel="stylesheet" href="/admin.css" />
   </head>
   <body>
-    <p>MoliInsight</p>
+    <header>
+      <h1>MoliInsight</h1>
+      <nav id="nav" hidden>
+        <a href="#/apps">应用</a>
+        <a href="#/tokens">管理令牌</a>
+        <a href="#/people">人员</a>
+        <button id="logout" type="button">退出</button>
+      </nav>
+    </header>
+    <main id="main"></main>
+    <script type="module" src="/admin.js"></script>
   </body>
 </html>

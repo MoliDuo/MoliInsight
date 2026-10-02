@@ -1,0 +1,8 @@
+# Copy to .dev.vars for `wrangler dev`. In production: `wrangler secret put <NAME>`.
+
+# Any long random string: `node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"`
+KEY_HMAC_SECRET=change-me
+SESSION_SECRET=change-me-too
+
+# The dashboard passphrase, hashed: `npm run hash-password -w @moli-insight/worker -- "your passphrase"`
+DASHBOARD_PASSWORD_HASH=

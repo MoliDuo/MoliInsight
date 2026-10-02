@@ -1,0 +1,19 @@
+{
+  "name": "@moli-insight/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The moli-insight command line: imports a client's local JSONL usage log through the ingest API.",
+  "type": "module",
+  "bin": {
+    "moli-insight": "./src/bin.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@moli-insight/protocol": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1"
+  }
+}

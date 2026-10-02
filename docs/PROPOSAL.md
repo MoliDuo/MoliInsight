@@ -206,7 +206,7 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 
 整个平台跑在 Cloudflare 上。**不再用 Vercel + Postgres**：Vercel 到 D1 只能走 REST，延迟和限速会抵消 D1 的优点；而 Workers 加 D1 没有冷启动、免费版就带 7 天的 Time Travel 恢复、Cron Trigger 更灵活、响应可以流式输出。
 
-- **技术栈**：Hono（Workers）+ Drizzle（D1）+ Zod + Vitest（集成测试用 `@cloudflare/vitest-pool-workers`，即 Miniflare）。工程规范沿用 MoliCashier，包括 `npm run check` 门禁、手写迁移 SQL（走 `wrangler d1 migrations`）和约束命名约定。看板是静态 SPA（Workers Assets），不做服务端渲染。
+- **技术栈**：Hono（Workers）+ 原生 D1 SQL + Zod + Vitest。**不用 Drizzle**：SQL 都是手写的迁移、多行 `INSERT … RETURNING` 和 JSON 路径查询，ORM 在这里只会挡路；集成测试用 wrangler 的 `getPlatformProxy` 起一个不落盘的本地 D1（即 Miniflare），在 Node 里直接调 Hono 应用，不需要 workerd 测试池。工程规范沿用 MoliCashier，包括 `npm run check` 门禁、手写迁移 SQL（走 `wrangler d1 migrations`）和约束命名约定。看板是静态 SPA（Workers Assets），不做服务端渲染。
 - **仓库结构**：npm workspaces。
   - `packages/protocol`：Zod 定义、JSON Schema、规范化规则。协议的唯一来源。
   - `packages/insight-web`、`packages/insight-node`：SDK，以公开的 scoped npm 包发布。

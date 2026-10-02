@@ -151,11 +151,12 @@ Content-Encoding: gzip        // 可选
 
 | 状态码 | `error` | 说明 |
 |---|---|---|
-| 400 | `invalid_json` | 请求体不是 JSON |
+| 400 | `invalid_json` | 请求体不是 JSON，或声明了 gzip 但内容损坏 |
 | 400 | `invalid_envelope` | 缺少或写错 `schemaVersion`、`sentAt`、`context`、`events`，或事件数超过 100 |
 | 400 | `unsupported_schema_version` | 服务端不支持这个 `schemaVersion` |
 | 401 | `unauthorized` | key 无效或已作废 |
-| 413 | `payload_too_large` | 超过第 3 节的请求体限制 |
+| 413 | `payload_too_large` | 超过第 3 节的请求体限制（发送 64KB、解压后 512KB） |
+| 415 | `unsupported_encoding` | `Content-Encoding` 不是 `gzip` 或不带 |
 | 429 | `rate_limited` | 超过限额，带 `Retry-After`（秒） |
 
 客户端的处理：401 保留队列等恢复，429 按 `Retry-After` 等待，5xx 和网络错误指数退避，其他 4xx 丢弃这一批（重发也不会成功）。限额的具体数值在 M1 实测后确定，协议只规定 429 和 `Retry-After`。

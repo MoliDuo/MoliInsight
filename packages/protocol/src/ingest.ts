@@ -161,6 +161,7 @@ export const ERROR_CODES = [
   "unsupported_schema_version",
   "unauthorized",
   "payload_too_large",
+  "unsupported_encoding",
   "rate_limited",
 ] as const;
 
