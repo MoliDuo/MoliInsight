@@ -9,7 +9,7 @@
   "assets": {
     "directory": "../dashboard/dist",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/v1/*", "/api/*", "/mcp", "/healthz"]
+    "run_worker_first": ["/v1/*", "/api/*", "/auth/*", "/mcp", "/healthz"]
   },
 
   "d1_databases": [
@@ -33,7 +33,15 @@
 
   // Where a day begins on the dashboard and in the daily counts: minutes east of UTC (480 = UTC+8).
   // Changing it later leaves old daily counts on the old boundary.
-  "vars": { "DAY_OFFSET_MINUTES": "480" },
+  "vars": {
+    "DAY_OFFSET_MINUTES": "480",
+    // Sign-in is Authelia's (client `moli-insight`; the secret is OIDC_CLIENT_SECRET, set with `wrangler secret put`).
+    "PUBLIC_URL": "https://insight.xiangyu.pro",
+    "OIDC_ISSUER": "https://auth.xiangyu.pro",
+    "OIDC_CLIENT_ID": "moli-insight",
+    // Who may use the dashboard: Authelia usernames. Taking one off ends their session at once.
+    "OIDC_ALLOWED_USERS": "xiangyu,yilin"
+  },
 
   // The public address. Cloudflare creates the DNS record and certificate when the
   // zone is on the same account.

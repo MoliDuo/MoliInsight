@@ -19,7 +19,7 @@ export async function api<T = any>(path: string, method = "GET", body?: unknown)
     headers: body === undefined ? {} : { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (response.status === 401 && path !== "/api/login") {
+  if (response.status === 401) {
     hooks.unauthorized();
     throw new ApiError(401, "unauthorized");
   }

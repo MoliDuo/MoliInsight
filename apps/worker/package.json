@@ -10,8 +10,7 @@
     "migrate:local": "wrangler d1 migrations apply moli-insight --local",
     "migrate:remote": "wrangler d1 migrations apply moli-insight --remote",
     "predeploy": "npm run build -w @moli-insight/dashboard",
-    "deploy": "wrangler deploy",
-    "hash-password": "node scripts/hash-password.ts"
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@moli-insight/protocol": "*",

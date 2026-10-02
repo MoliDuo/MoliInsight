@@ -8,13 +8,12 @@ Status: M0 (contract), M1 (ingest, admin, retention, import), the M2 SDKs (web, 
 
 ```bash
 npm install
-cp apps/worker/.dev.vars.example apps/worker/.dev.vars
-npm run hash-password -w @moli-insight/worker -- "your passphrase"   # paste the output into .dev.vars
+cp apps/worker/.dev.vars.example apps/worker/.dev.vars               # fill in the secrets; see Sign-in below
 npm run migrate:local
 npm run dev                                                          # worker on :8787, dashboard with hot reload on http://localhost:5173
 ```
 
-`npm run dev` starts `wrangler dev` and the Vite dev server together; Vite proxies `/api`, `/v1` and `/mcp` to the worker. Open http://localhost:5173, sign in, and the setup wizard creates your first app and key, shows the code to paste into your app, and tells you when the first event arrives. (The worker alone serves the last built dashboard at :8787; `npm run build` rebuilds it, and `dev` and `deploy` do that for you.)
+`npm run dev` starts `wrangler dev` and the Vite dev server together; Vite proxies `/api`, `/v1` and `/mcp` to the worker. Open http://localhost:5173, sign in with Authelia, and the setup wizard creates your first app and key, shows the code to paste into your app, and tells you when the first event arrives. (The worker alone serves the last built dashboard at :8787; `npm run build` rebuilds it, and `dev` and `deploy` do that for you.)
 
 You can also send data by hand:
 
@@ -33,7 +32,7 @@ INSIGHT_URL=http://localhost:8787 INSIGHT_KEY=mi_... \
 
 The dashboard is a React single-page app in `apps/dashboard` (Vite, Tailwind, TanStack Query and Router, Recharts). Pages: overview with change against the previous period, events, sessions, funnels and metrics, release comparison, friction, performance, navigation, feature usage, and per-app settings (keys, devices, event catalog upload with a dry run, MoliSwitch import, export, retention, delete) plus people and admin tokens. Filters live in the URL, so any view can be shared as a link. Days begin at `DAY_OFFSET_MINUTES` in `apps/worker/wrangler.jsonc` (480 = UTC+8); change it before the first night's rollup, or old daily counts stay on the old boundary.
 
-Read the data back (needs the dashboard cookie, or an admin token `mia_…` from the admin page; the format is in [docs/export-v1.md](docs/export-v1.md)):
+Read the data back (needs a dashboard session, or an admin token `mia_…` from the admin page; the format is in [docs/export-v1.md](docs/export-v1.md)):
 
 ```bash
 curl -H "authorization: Bearer mia_..." "http://localhost:8787/v1/export?app=switch&limit=1000"
@@ -42,6 +41,21 @@ curl -H "authorization: Bearer mia_..." "http://localhost:8787/v1/export?app=swi
 
 SDKs: [docs/sdk-api.md](docs/sdk-api.md). Swift client for apps without a backend: [clients/swift](clients/swift/README.md). Cashier wiring: [docs/integration-cashier.md](docs/integration-cashier.md).
 
+## Sign-in
+
+Signing in to the dashboard is Authelia's (OIDC authorization code with PKCE); there is no password of our own. The client is `moli-insight`, registered on xiangyu-box (see `docs/sop/authelia-登记客户端.md` in MoliSpec):
+
+```bash
+cd /work/MoliSpec/tools/authelia
+./moli-authelia add moli-insight --name "MoliInsight" \
+  --redirect https://insight.xiangyu.pro/auth/callback \
+  --redirect http://localhost:5173/auth/callback      # the second is for `npm run dev`
+```
+
+`CLIENT_SECRET` is shown once: put it in `OIDC_CLIENT_SECRET` (`wrangler secret put` in production, `.dev.vars` locally). Who may use the dashboard is `OIDC_ALLOWED_USERS` in `apps/worker/wrangler.jsonc`, a list of Authelia usernames. Everyone else is turned away even with a valid Authelia login, and taking a name off the list ends their session at once. To end every session, change `SESSION_SECRET`.
+
+Export and MCP use admin tokens (`mia_…`), not this sign-in.
+
 ## Deploy
 
 ```bash
@@ -49,11 +63,10 @@ npx wrangler d1 create moli-insight           # put the id into apps/worker/wran
 npm run migrate:remote -w @moli-insight/worker
 npx wrangler secret put KEY_HMAC_SECRET       # in apps/worker
 npx wrangler secret put SESSION_SECRET
-npx wrangler secret put DASHBOARD_PASSWORD_HASH
+npx wrangler secret put OIDC_CLIENT_SECRET    # from `moli-authelia add`, see Sign-in
 npm run deploy -w @moli-insight/worker       # builds the dashboard first
+npm run migrate:remote -w @moli-insight/worker
 ```
-
-Generating the password hash stays a command-line step, because it ends up in a secret.
 
 ## Check
 

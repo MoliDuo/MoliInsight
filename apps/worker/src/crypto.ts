@@ -43,55 +43,32 @@ export function timingSafeEqual(a: string, b: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Passwords. Workers cap PBKDF2 at 100,000 iterations.
+// Signed cookie values: `<payload>.<signature>`. The payload names its own purpose (`typ`), so a cookie
+// signed for one use cannot be presented for another.
 
-const PBKDF2_ITERATIONS = 100_000;
-const PBKDF2_PREFIX = "pbkdf2-sha256";
-
-async function pbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, [
-    "deriveBits",
-  ]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: salt as BufferSource, iterations },
-    key,
-    256,
-  );
-  return new Uint8Array(bits);
+export async function signPayload(secret: string, typ: string, payload: Record<string, unknown>): Promise<string> {
+  const body = base64url(encoder.encode(JSON.stringify({ ...payload, typ })));
+  return `${body}.${await hmacHex(secret, body)}`;
 }
 
-/** `pbkdf2-sha256$<iterations>$<salt>$<hash>`, the salt and hash in base64url. */
-export async function hashPassword(password: string, iterations = PBKDF2_ITERATIONS): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await pbkdf2(password, salt, iterations);
-  return [PBKDF2_PREFIX, iterations, base64url(salt), base64url(hash)].join("$");
-}
-
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [prefix, iterations, salt, hash] = stored.split("$");
-  if (prefix !== PBKDF2_PREFIX || !iterations || !salt || !hash) return false;
-  const count = Number(iterations);
-  if (!Number.isInteger(count) || count < 1 || count > PBKDF2_ITERATIONS) return false;
-  const derived = await pbkdf2(password, fromBase64url(salt), count);
-  return timingSafeEqual(base64url(derived), hash);
-}
-
-// ---------------------------------------------------------------------------
-// Signed session cookie value: `<payload>.<signature>`.
-
-export async function signSession(secret: string, expiresAtMs: number): Promise<string> {
-  const payload = base64url(encoder.encode(JSON.stringify({ exp: expiresAtMs })));
-  return `${payload}.${await hmacHex(secret, payload)}`;
-}
-
-export async function verifySession(secret: string, value: string, nowMs: number): Promise<boolean> {
-  const [payload, signature] = value.split(".");
-  if (!payload || !signature) return false;
-  if (!timingSafeEqual(await hmacHex(secret, payload), signature)) return false;
+/** The payload if the signature is ours, the purpose matches and `exp` (ms) has not passed. */
+export async function verifyPayload<T extends { exp: number }>(
+  secret: string,
+  typ: string,
+  value: string,
+  nowMs: number,
+): Promise<T | null> {
+  const [body, signature] = value.split(".");
+  if (!body || !signature) return null;
+  if (!timingSafeEqual(await hmacHex(secret, body), signature)) return null;
   try {
-    const { exp } = JSON.parse(new TextDecoder().decode(fromBase64url(payload))) as { exp?: unknown };
-    return typeof exp === "number" && exp > nowMs;
+    const payload = JSON.parse(new TextDecoder().decode(fromBase64url(body))) as T & { typ?: unknown };
+    return payload.typ === typ && typeof payload.exp === "number" && payload.exp > nowMs ? payload : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function sha256Base64url(text: string): Promise<string> {
+  return base64url(new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(text))));
 }

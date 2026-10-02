@@ -191,7 +191,7 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
   - 只采集：长度、数量、字段名、控件标识、错误类型。
   - 错误信息里的错误码放进单独的属性，不要拼进 `message`：服务端会掩掉 `message` 里 4 位及以上的数字。
   - 服务端不保存 IP。User-Agent 只解析成粗粒度的 `os` 和 `client` 后保存。
-- **看板登录**：使用口令登录。环境变量里存口令的哈希，登录后发签名 cookie，失败时限流。这个设计只够两个人用，不需要账号体系。
+- **看板登录**：走 Authelia（OIDC 授权码 + PKCE，机密客户端 `moli-insight`），登录后发签名 cookie；只有 `OIDC_ALLOWED_USERS` 里的用户名能用。（最初是口令登录，后来改成统一登录，口令登录已删除。）
 - **key 的管理**：
   - ingest key 只能写入。admin token 可以读取，用于导出和 MCP。
   - 两种 key 都可以随时作废，服务端都只保存 HMAC。
@@ -241,7 +241,7 @@ await insight.send([{ name: "processing.finished", props: { ms, ok }, correlatio
 | 里程碑 | 内容 | 验收标准 |
 |---|---|---|
 | M0 契约 | 定稿接收协议 v1、标准事件、SDK API、目录格式；仓库骨架和第一个迁移 | 第 4–5 节的文档定稿，有 JSON Schema 和 TS 类型；MoliSwitch 的真实事件样例能通过校验；迁移在本地 D1 上应用成功 |
-| M1 能收 | ingest（relay 和直连两种）、去重、限额、数据表、口令登录、管理页（App 和 key）、保留期 cron、`moli-insight import` 命令 | 用 curl 发送正常批次、非法批次、重复批次，结果都符合预期；Miniflare 集成测试通过；MoliSwitch 的样例日志能导入，重复导入不新增 |
+| M1 能收 | ingest（relay 和直连两种）、去重、限额、数据表、登录、管理页（App 和 key）、保留期 cron、`moli-insight import` 命令 | 用 curl 发送正常批次、非法批次、重复批次，结果都符合预期；Miniflare 集成测试通过；MoliSwitch 的样例日志能导入，重复导入不新增 |
 | M2 SDK 与接入 | 发布 insight-web 和 insight-node 0.1.0，做 Swift 客户端；接入 Cashier 和 MoliSwitch | 两个应用都**不改平台代码**就接入；demo 页面验证自动采集到的全部 web 包标准事件；bundle 体积不超过 4KB gz；单元测试覆盖队列、beacon、401 时保留、多标签页、快速连点和点了没反应的检测；两个应用的数据都能通过导出读到 |
 | M3 能看 | P0 看板页面（概览、事件浏览器、管理）和导出；日汇总表 | 两个应用都在同一个看板里有数据；导出符合第 7.1 节的格式 |
 | M4 能问 | 漏斗与比率、Session 时间线、版本对比、摩擦点、性能、事件目录、MCP | 在 Claude Code 里通过 MCP 同时拿到 Cashier 的漏斗数据和 MoliSwitch 的手动纠正率 |

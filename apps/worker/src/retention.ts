@@ -98,6 +98,5 @@ export async function runRetention(
     }
   }
 
-  await db.prepare("DELETE FROM login_failures WHERE at < ?1").bind(nowMs - DAY_MS).run();
   return { eventsDeleted, sessionsDeleted, more };
 }

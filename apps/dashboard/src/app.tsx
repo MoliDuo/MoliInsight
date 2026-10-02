@@ -44,14 +44,17 @@ function Root() {
     // A 401 anywhere means the session ended: show the login page and drop what was cached.
     hooks.unauthorized = () => client.setQueryData(["me"], { authenticated: false });
   }, [client]);
-  // Drop everything cached except `me`: clearing that one too would orphan the query this component watches.
-  const signedAs = (authenticated: boolean) => {
-    client.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
-    client.setQueryData(["me"], { authenticated });
-  };
   if (me.isPending) return <div className="p-8"><PageSkeleton /></div>;
-  if (!me.data?.authenticated) return <LoginPage onDone={() => signedAs(true)} />;
-  return <Shell onLogout={() => signedAs(false)} />;
+  if (!me.data?.authenticated) return <LoginPage />;
+  // Drop everything cached except `me`: clearing that one too would orphan the query this component watches.
+  return (
+    <Shell
+      onLogout={() => {
+        client.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+        client.setQueryData(["me"], { authenticated: false });
+      }}
+    />
+  );
 }
 
 /** `/`: the app last looked at, the first app, or the setup page when there is none. */
@@ -105,8 +108,18 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
+// Every search value is text. The router's own format reads `days=7` as a number and writes it back
+// as `days=%227%22`, which would turn every shared link into that.
+const parseSearch = (search: string) => Object.fromEntries(new URLSearchParams(search));
+const stringifySearch = (search: Record<string, unknown>) => {
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) if (value !== undefined && value !== null && value !== "") q.set(key, String(value));
+  const text = q.toString();
+  return text ? `?${text}` : "";
+};
+
 export const createAppRouter = (history?: RouterHistory) =>
-  createRouter({ routeTree, defaultPreload: false, ...(history ? { history } : {}) });
+  createRouter({ routeTree, defaultPreload: false, parseSearch, stringifySearch, ...(history ? { history } : {}) });
 
 const browserRouter = createAppRouter();
 

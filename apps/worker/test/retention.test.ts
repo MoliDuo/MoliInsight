@@ -61,13 +61,4 @@ describe("retention", () => {
     await h.close();
     h = saved;
   });
-
-  it("clears login failures older than a day", async () => {
-    await h.env.DB.prepare("INSERT INTO login_failures (at) VALUES (?1), (?2)")
-      .bind(h.clock.now - 2 * DAY, h.clock.now - 1000)
-      .run();
-    await runRetention(h.env.DB, h.clock.now);
-    const row = await h.env.DB.prepare("SELECT count(*) AS n FROM login_failures").first<{ n: number }>();
-    expect(row!.n).toBe(1);
-  });
 });

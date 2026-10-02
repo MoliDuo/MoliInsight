@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getPlatformProxy } from "wrangler";
 import { createApp } from "../src/index.ts";
-import { hashPassword } from "../src/crypto.ts";
+import { signPayload } from "../src/crypto.ts";
 import type { Env } from "../src/env.ts";
 
 const MIGRATIONS = fileURLToPath(new URL("../migrations/", import.meta.url).href);
@@ -18,7 +18,9 @@ function statements(sql: string): string[] {
     .filter(Boolean);
 }
 
-export const PASSWORD = "correct horse battery staple";
+export const USER = "tester";
+export const ISSUER = "https://auth.test";
+export const CLIENT_ID = "moli-insight";
 
 export class FakeLimiter {
   calls: string[] = [];
@@ -39,8 +41,10 @@ export interface Harness {
   /** Waits for work handed to waitUntil. */
   settle(): Promise<void>;
   close(): Promise<void>;
-  /** A dashboard session cookie, from a real login. */
-  login(): Promise<string>;
+  /** A dashboard session cookie for an allowed user, signed the way the worker signs it. */
+  login(user?: string): Promise<string>;
+  /** Replaces how the worker reaches Authelia. */
+  authelia: { fetch: typeof fetch };
   /** Creates an app and an ingest key, returns the key. */
   newApp(slug: string, cookie: string): Promise<string>;
 }
@@ -64,13 +68,18 @@ export async function createHarness(): Promise<Harness> {
     DB: db,
     KEY_HMAC_SECRET: "test-hmac-secret",
     SESSION_SECRET: "test-session-secret",
-    DASHBOARD_PASSWORD_HASH: await hashPassword(PASSWORD),
+    PUBLIC_URL: "https://insight.test",
+    OIDC_ISSUER: ISSUER,
+    OIDC_CLIENT_ID: CLIENT_ID,
+    OIDC_CLIENT_SECRET: "test-client-secret",
+    OIDC_ALLOWED_USERS: `${USER},second`,
     INGEST_LIMITER: ingestLimiter,
     DEVICE_LIMITER: deviceLimiter,
   } as unknown as Env;
 
   const clock = { now: Date.parse("2026-10-02T08:00:05.000Z") };
-  const app = createApp({ now: () => clock.now });
+  const authelia = { fetch: (() => Promise.reject(new Error("no Authelia in this test"))) as typeof fetch };
+  const app = createApp({ now: () => clock.now, fetch: (input, init) => authelia.fetch(input, init) });
   const pending: Promise<unknown>[] = [];
   const ctx = {
     waitUntil: (p: Promise<unknown>) => void pending.push(p),
@@ -86,14 +95,10 @@ export async function createHarness(): Promise<Harness> {
     request: (path, init) => Promise.resolve(app.fetch(new Request(`https://insight.test${path}`, init), env, ctx)),
     settle: async () => void (await Promise.all(pending.splice(0))),
     close: () => proxy.dispose(),
-    async login() {
-      const response = await harness.request("/api/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ password: PASSWORD }),
-      });
-      if (response.status !== 200) throw new Error(`login failed: ${response.status}`);
-      return response.headers.get("set-cookie")!.split(";")[0]!;
+    authelia,
+    async login(user = USER) {
+      const value = await signPayload(env.SESSION_SECRET, "session", { exp: clock.now + 30 * 24 * 60 * 60 * 1000, user });
+      return `mi_session=${value}`;
     },
     async newApp(slug, cookie) {
       const headers = { "content-type": "application/json", cookie };

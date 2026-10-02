@@ -1,12 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { verifyPassword } from "./crypto.ts";
 import type { AppEnv } from "./env.ts";
 import { createKey } from "./keys.ts";
-import { endSession, hasSession, requireSameOrigin, requireSession, startSession } from "./session.ts";
-
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const LOGIN_MAX_FAILURES = 10;
+import { endSession, requireSameOrigin, requireSession, sessionUser } from "./session.ts";
 
 /** These are dashboard pages, not apps: `/new` and `/settings/people` would clash with an app of that name. */
 const RESERVED_SLUGS = new Set(["new", "settings"]);
@@ -44,41 +40,18 @@ admin.use("/api/*", requireSameOrigin);
 // ---------------------------------------------------------------------------
 // session
 
-admin.post("/api/login", async (c) => {
-  const { now } = c.get("deps");
-  const body = await json(c.req.raw, z.object({ password: z.string().max(200) }));
-  if (!body) return c.json({ error: "invalid_request" }, 400);
-
-  const since = now() - LOGIN_WINDOW_MS;
-  const failures = await c.env.DB.prepare("SELECT count(*) AS n FROM login_failures WHERE at > ?1")
-    .bind(since)
-    .first<{ n: number }>();
-  if ((failures?.n ?? 0) >= LOGIN_MAX_FAILURES) {
-    c.header("Retry-After", String(LOGIN_WINDOW_MS / 1000));
-    return c.json({ error: "too_many_attempts" }, 429);
-  }
-
-  const ok =
-    c.env.DASHBOARD_PASSWORD_HASH !== undefined &&
-    c.env.SESSION_SECRET !== undefined &&
-    (await verifyPassword(body.password, c.env.DASHBOARD_PASSWORD_HASH));
-  if (!ok) {
-    await c.env.DB.prepare("INSERT INTO login_failures (at) VALUES (?1)").bind(now()).run();
-    return c.json({ error: "wrong_password" }, 401);
-  }
-  await startSession(c);
-  return c.json({ ok: true });
-});
-
 admin.post("/api/logout", (c) => {
   endSession(c);
   return c.json({ ok: true });
 });
 
-admin.get("/api/me", async (c) => c.json({ authenticated: await hasSession(c) }));
+admin.get("/api/me", async (c) => {
+  const user = await sessionUser(c);
+  return c.json({ authenticated: user !== null, ...(user && { user }) });
+});
 
 admin.use("/api/*", async (c, next) => {
-  if (c.req.path === "/api/login" || c.req.path === "/api/logout" || c.req.path === "/api/me") {
+  if (c.req.path === "/api/logout" || c.req.path === "/api/me") {
     return next();
   }
   return requireSession(c, next);

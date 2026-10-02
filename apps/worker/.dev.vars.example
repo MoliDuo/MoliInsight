@@ -4,5 +4,9 @@
 KEY_HMAC_SECRET=change-me
 SESSION_SECRET=change-me-too
 
-# The dashboard passphrase, hashed: `npm run hash-password -w @moli-insight/worker -- "your passphrase"`
-DASHBOARD_PASSWORD_HASH=
+# Sign-in is Authelia's. The client secret is shown once by `moli-authelia add` on xiangyu-box.
+OIDC_CLIENT_SECRET=
+
+# Local development goes through the Vite server, so the callback is on its address.
+# That address must be among the client's redirect URIs: http://localhost:5173/auth/callback
+PUBLIC_URL=http://localhost:5173

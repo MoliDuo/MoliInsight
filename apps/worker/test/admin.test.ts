@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { PASSWORD, createHarness, type Harness } from "./harness.ts";
+import { USER, createHarness, type Harness } from "./harness.ts";
 
 let h: Harness;
 let cookie: string;
@@ -17,43 +17,44 @@ const call = (path: string, method = "GET", body?: unknown, headers: Record<stri
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 
-describe("login", () => {
-  it("rejects a wrong passphrase and locks out after ten failures", async () => {
-    const harness = await createHarness();
-    const bad = () =>
-      harness.request("/api/login", { method: "POST", body: JSON.stringify({ password: "nope" }) });
-    for (let i = 0; i < 10; i++) expect((await bad()).status).toBe(401);
-    expect((await bad()).status).toBe(429);
-    // Even the right passphrase waits.
-    const right = await harness.request("/api/login", { method: "POST", body: JSON.stringify({ password: PASSWORD }) });
-    expect(right.status).toBe(429);
-    // The window passes.
-    harness.clock.now += 16 * 60 * 1000;
-    const later = await harness.request("/api/login", { method: "POST", body: JSON.stringify({ password: PASSWORD }) });
-    expect(later.status).toBe(200);
-    await harness.close();
-  });
-
-  it("sets an HttpOnly, SameSite=Strict cookie that /api/me accepts", async () => {
-    const response = await h.request("/api/login", { method: "POST", body: JSON.stringify({ password: PASSWORD }) });
-    const setCookie = response.headers.get("set-cookie")!;
-    expect(setCookie).toMatch(/HttpOnly/i);
-    expect(setCookie).toMatch(/SameSite=Strict/i);
-    expect(await (await call("/api/me")).json()).toEqual({ authenticated: true });
+describe("session", () => {
+  it("accepts the signed cookie and nothing else", async () => {
+    expect(await (await call("/api/me")).json()).toEqual({ authenticated: true, user: USER });
     expect(await (await call("/api/me", "GET", undefined, {})).json()).toEqual({ authenticated: false });
+    expect((await call("/api/apps", "GET", undefined, { cookie: `${cookie}x` })).status).toBe(401);
   });
 
-  it("refuses a session cookie after it expires or is tampered with", async () => {
+  it("refuses a session cookie after it expires", async () => {
     const original = h.clock.now;
-    expect((await call("/api/apps", "GET", undefined, { cookie: `${cookie}x` })).status).toBe(401);
     h.clock.now += 31 * 24 * 60 * 60 * 1000;
     expect((await call("/api/apps")).status).toBe(401);
     h.clock.now = original;
   });
+
+  it("ends a session the moment its user is taken off the allowed list", async () => {
+    const stranger = await h.login("someone-else");
+    expect((await call("/api/apps", "GET", undefined, { cookie: stranger })).status).toBe(401);
+    const saved = h.env.OIDC_ALLOWED_USERS;
+    h.env.OIDC_ALLOWED_USERS = "";
+    expect((await call("/api/apps")).status).toBe(401);
+    h.env.OIDC_ALLOWED_USERS = saved;
+    expect((await call("/api/apps")).status).toBe(200);
+  });
+
+  it("has no password login any more", async () => {
+    const response = await h.request("/api/login", { method: "POST", body: JSON.stringify({ password: "anything" }) });
+    expect(response.status).toBe(401);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("clears the cookie on logout", async () => {
+    const response = await call("/api/logout", "POST");
+    expect(response.headers.get("set-cookie")).toMatch(/mi_session=;/);
+  });
 });
 
 describe("guards", () => {
-  it("requires a session for everything but login", async () => {
+  it("requires a session for everything but sign-in", async () => {
     for (const path of ["/api/apps", "/api/people", "/api/admin-tokens"]) {
       expect((await call(path, "GET", undefined, {})).status).toBe(401);
     }

@@ -11,10 +11,11 @@ import { runRollup } from "./rollup.ts";
 import { stats } from "./dashboard-api.ts";
 import { setup } from "./setup-api.ts";
 import { mcp } from "./mcp.ts";
+import { oidc } from "./oidc.ts";
 
 export type { Env } from "./env.ts";
 
-export function createApp(deps: Deps = { now: () => Date.now() }) {
+export function createApp(deps: Deps = { now: () => Date.now(), fetch: (input, init) => fetch(input, init) }) {
   const app = new Hono<AppEnv>();
 
   app.use("*", async (c, next) => {
@@ -26,6 +27,7 @@ export function createApp(deps: Deps = { now: () => Date.now() }) {
   app.route("/", ingest);
   app.route("/", catalogRoutes);
   app.route("/", exportRoutes);
+  app.route("/", oidc);
   app.route("/", admin);
   app.route("/", stats);
   app.route("/", setup);

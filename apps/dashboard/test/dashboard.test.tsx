@@ -209,23 +209,31 @@ describe("the dashboard against the real API", { timeout: 20_000 }, () => {
     await screen.findByText("A new one.", {}, { timeout: 5000 });
   });
 
-  it("asks for the passphrase when the session has ended, and shows the app after signing in", async () => {
+  it("keeps filter values plain in the address bar", async () => {
+    await open("/cashier/overview?days=7&release=r1");
+    await screen.findByText("平均会话时长");
+    // `days=7` must not turn into `days=%227%22`, which is what the router does to number-like strings by default.
+    expect(router.history.location.search).toBe("?days=7&release=r1");
+  });
+
+  it("offers Authelia sign-in when the session has ended, and says why a sign-in failed", async () => {
     cleanup();
     queryClient.clear();
-    let session = "";
-    vi.stubGlobal("fetch", async (path: string, init: RequestInit = {}) => {
-      if (path === "/api/login") {
-        session = cookie;
-        return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
-      }
-      return h.request(path, { ...init, headers: { ...(init.headers as object), ...(session && { cookie: session }) } });
-    });
-    await open("/cashier/overview");
-    const input = await screen.findByLabelText("口令");
-    fireEvent.change(input, { target: { value: "anything" } });
-    fireEvent.click(screen.getByRole("button", { name: "登录" }));
-    await waitFor(() => expect(screen.queryByLabelText("口令")).toBeNull());
-    await screen.findByRole("link", { name: /漏斗/ });
+    vi.stubGlobal("fetch", (path: string, init: RequestInit = {}) => h.request(path, init));
+    window.happyDOM.setURL("https://insight.test/cashier/overview?days=7"); // the browser's address, which the page links back to
+    await open("/cashier/overview?days=7");
+    const link = await screen.findByRole("link", { name: "用 Authelia 登录" });
+    // It comes back to the page it was on, and there is no password field.
+    expect(link.getAttribute("href")).toBe(`/auth/login?next=${encodeURIComponent("/cashier/overview?days=7")}`);
+    expect(screen.queryByLabelText("口令")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    cleanup();
+    queryClient.clear();
+    window.happyDOM.setURL("https://insight.test/?login_error=forbidden");
+    await open("/");
+    await screen.findByText("这个账号没有权限使用看板");
+    window.happyDOM.setURL("https://insight.test/cashier/overview");
     vi.stubGlobal("fetch", (path: string, init: RequestInit = {}) =>
       h.request(path, { ...init, headers: { ...(init.headers as object), cookie } }),
     );
