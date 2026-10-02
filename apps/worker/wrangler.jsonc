@@ -18,7 +18,7 @@
       "database_name": "moli-insight",
       // Replace with the id printed by `wrangler d1 create moli-insight`.
       // Local development (`--local`) does not use it.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "476c059c-eebd-4b8c-b76a-0d13950bcc8e",
       "migrations_dir": "migrations"
     }
   ],
